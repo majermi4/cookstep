@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'./tests/browser',timeout:30000,fullyParallel:false,workers:1,reporter:'list',outputDir:'artifacts/browser-results',use:{baseURL:'http://127.0.0.1:4173',headless:true,viewport:{width:1360,height:1000},launchOptions:{args:['--disable-gpu','--disable-features=CDPScreenshotNewSurface'],executablePath:process.env.COOKSTEP_BROWSER_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'},screenshot:'only-on-failure'}});
