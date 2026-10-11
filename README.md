@@ -33,6 +33,7 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 - Main guide and component tasks with independent progress and optional task suggestions.
 - Previous/Next buttons and left/right keyboard arrows browse steps without completing them; completion stays explicit.
 - The timer panel collapses when idle and opens automatically when a timer starts.
+- Compact cooking header with recipe overview, library, sound, screen status and finish controls in an options menu.
 - User-started countdowns, elapsed tracking, named repeated batches, manual timers and links to originating steps.
 - Visual expiry alerts, foreground sound activation, stopped-timer acknowledgement and overdue/elapsed display.
 - Responsive phone/tablet/desktop layouts, Screen Wake Lock when available, and interrupted-session recovery from saved timestamps.

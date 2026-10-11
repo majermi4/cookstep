@@ -11,7 +11,7 @@ const icons = {
   upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/>', check:'<path d="m5 12 4 4L19 6"/>',
   pot:'<path d="M5 10h14v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4zM2 11h3m14 0h3M4 7h16M10 3h4"/>',
   leaf:'<path d="M20 4C7 2 2 9 6 16c8 5 15-1 14-12ZM5 21 15 10"/>', grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-  close:'<path d="m6 6 12 12M6 18 18 6"/>', sound:'<path d="m10 5-5 4H2v6h3l5 4zM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
+  close:'<path d="m6 6 12 12M6 18 18 6"/>', more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>', sound:'<path d="m10 5-5 4H2v6h3l5 4zM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
   screen:'<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/>', info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/>', search:'<circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/>', trash:'<path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/>',
 };
 const icon = name => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.pot}</svg>`;
@@ -77,10 +77,10 @@ function overviewScreen(record,isImport=false) {
 function taskTitle(id) { return id === 'main' ? 'Main guide' : session.record.recipe.components?.find(c=>c.id===id)?.title || 'Task'; }
 function taskSwitcher() {
   const r = session.record.recipe;
-  return `<section class="tasks panel"><div class="section-heading"><h2>Your meal</h2><span class="small muted">${(r.components?.length || 0)+1} tasks</span></div>${[{id:'main',title:'Main guide'},...(r.components||[])].map(c=>{
-    const steps = taskSteps(r,c.id), completed = steps.filter(s=>session.completed.includes(s.id)).length, open=session.opened.includes(c.id);
-    return `<button class="task-button ${session.activeTask===c.id?'active':''}" data-action="task" data-id="${esc(c.id)}"><span class="task-icon">${icon(completed===steps.length && steps.length?'check':c.id==='main'?'book':'pot')}</span><span><strong>${esc(c.title)}</strong><small>${steps.length ? `${completed} of ${steps.length} steps done` : 'Meal overview'}${!open?' · Open task':''}</small><span class="task-progress"><i style="width:${steps.length?completed/steps.length*100:0}%"></i></span></span>${icon('chevron')}</button>`;
-  }).join('')}</section>`;
+  return `<nav class="tasks panel" aria-label="Cooking tasks">${[{id:'main',title:'Main guide'},...(r.components||[])].map(c=>{
+    const steps = taskSteps(r,c.id), completed = steps.filter(s=>session.completed.includes(s.id)).length;
+    return `<button class="task-button ${session.activeTask===c.id?'active':''}" data-action="task" data-id="${esc(c.id)}"><span class="task-icon">${icon(completed===steps.length && steps.length?'check':c.id==='main'?'book':'pot')}</span><span><strong>${esc(c.title)}</strong><small>${steps.length ? `${completed} of ${steps.length} steps done` : 'Meal overview'}</small><span class="task-progress"><i style="width:${steps.length?completed/steps.length*100:0}%"></i></span></span>${icon('chevron')}</button>`;
+  }).join('')}</nav>`;
 }
 function timerCards() {
   return session.timers.length ? session.timers.map(t=>{
@@ -91,9 +91,8 @@ function timerCards() {
 function timerSubtitle(t,state) { return t.stoppedAt ? `Stopped · ${clockText(state.elapsed)} elapsed` : state.expired ? `${clockText(state.overdue)} overdue · ${clockText(state.elapsed)} elapsed` : t.mode==='elapsed' ? 'Since you started cooking' : `${clockText(state.elapsed)} elapsed`; }
 function cookingScreen() {
   const r=session.record.recipe, steps=taskSteps(r,session.activeTask), position=session.positions[session.activeTask] || 0, step=steps[position], factor=session.target/r.yield.quantity;
-  return `<main class="cooking-page"><div class="cooking-top"><div><button class="back-link" data-action="library">${icon('left')} Recipe library</button><h1>${esc(r.title)}</h1></div><div class="cooking-options">${button('Overview','session-overview','','secondary','book')}${button('Finish cooking','finish','','secondary','check')}</div></div>
-  <div class="session-meta"><span>${icon('pot')} ${number(session.target)} ${esc(r.yield.unit)}</span><span>${session.units==='original'?'As written':session.units==='metric'?'Metric':'Imperial'}</span><span id="wake-status">${icon('screen')} ${esc(wakeStatus)}</span><button class="sound-status" data-action="sound">${icon('sound')} ${audioReady?'Sound on':'Enable sound'}</button></div><div id="timer-alerts" role="alert"></div>
-  <div class="cooking-grid"><aside class="cooking-left">${taskSwitcher()}<div class="quiet-note">${icon('leaf')}<p>One thing at a time.<br>Your other tasks will wait.<br>Your timers will keep going.</p></div></aside><section class="current-step panel">${step ? `<div class="step-top"><span class="eyebrow">${esc(taskTitle(session.activeTask))}</span><span class="pill">STEP ${position+1} / ${steps.length}</span></div><div class="step-track">${steps.map((s,i)=>`<button class="${i===position?'current':''} ${session.completed.includes(s.id)?'complete':''}" data-action="jump" data-index="${i}" aria-label="Step ${i+1}: ${esc(s.title)}" aria-current="${i===position?'step':'false'}"></button>`).join('')}</div><h2>${esc(step.title)}</h2><p class="instruction pre-wrap">${esc(step.instruction)}</p>${step.temperature?`<div class="temperature">Setting: <strong>${formatTemperature(step.temperature,session.units)}</strong></div>`:''}
+  return `<main class="cooking-page"><div class="cooking-top"><h1 title="${esc(r.title)}">${esc(r.title)}</h1>${button('','cooking-menu','aria-label="Cooking options" aria-haspopup="dialog"','secondary cooking-menu','more')}</div><div id="timer-alerts" role="alert"></div>
+  <div class="cooking-grid"><aside class="cooking-left">${taskSwitcher()}</aside><section class="current-step panel">${step ? `<div class="step-top"><span class="eyebrow">${esc(taskTitle(session.activeTask))}</span><span class="pill">STEP ${position+1} / ${steps.length}</span></div><div class="step-track">${steps.map((s,i)=>`<button class="${i===position?'current':''} ${session.completed.includes(s.id)?'complete':''}" data-action="jump" data-index="${i}" aria-label="Step ${i+1}: ${esc(s.title)}" aria-current="${i===position?'step':'false'}"></button>`).join('')}</div><h2>${esc(step.title)}</h2><p class="instruction pre-wrap">${esc(step.instruction)}</p>${step.temperature?`<div class="temperature">Setting: <strong>${formatTemperature(step.temperature,session.units)}</strong></div>`:''}
   ${step.ingredientUses?.length ? `<div class="step-ingredient-box"><h3>For this step</h3>${step.ingredientUses.map(u=>{const i=r.ingredients.find(i=>i.id===u.ingredientId); return `<div class="ingredient-row"><span>${esc(i.name)}${i.optional?'<small>Optional</small>':''}</span><span class="amount">${u.quantity?quantityHtml(u.quantity,factor,session.units):'<small>Amount not specified for this step</small>'}</span></div>`;}).join('')}</div>`:''}
   ${(step.imageIds || []).map(id=>image(session.record,id)).join('')}
   ${step.completionCue?`<div class="completion-cue"><span>${icon('check')}</span><p><small>YOU’RE LOOKING FOR</small>${esc(step.completionCue)}</p></div>`:''}${step.notes?.length?`<div class="notes">${step.notes.map(n=>`<p>${esc(n)}</p>`).join('')}</div>`:''}
@@ -104,7 +103,7 @@ function cookingScreen() {
 }
 function render() {
   const focus=document.activeElement?.id, caret=document.activeElement?.selectionStart;
-  app.innerHTML=header()+(storageError?`<div class="storage-error" role="alert">${esc(storageError)} ${button('Retry saving','retry-save','','secondary')}</div>`:'')+(view==='cooking'&&session?cookingScreen():view==='overview'&&selected?overviewScreen(selected):view==='import'&&pending?overviewScreen(pending,true):libraryScreen());
+  app.innerHTML=(view==='cooking'&&session?'':header())+(storageError?`<div class="storage-error" role="alert">${esc(storageError)} ${button('Retry saving','retry-save','','secondary')}</div>`:'')+(view==='cooking'&&session?cookingScreen():view==='overview'&&selected?overviewScreen(selected):view==='import'&&pending?overviewScreen(pending,true):libraryScreen());
   if (focus && ['search','target','batch-name'].includes(focus)) { const el=document.getElementById(focus); if(el){el.focus();if(el.type==='search')el.setSelectionRange(caret,caret);} }
   if(modal.open && modal.dataset.timers) modal.querySelector(".drawer-timers").innerHTML=timerCards();
   updateTimers();
@@ -160,7 +159,7 @@ async function handleAction(el){
   if(action==='close-modal'){modal.close();return;}
   if(action==='import'){if(modal.open)modal.close();document.querySelector('#file-input').click();return;}
   if(action==='example'){const data=await fetch('./examples/recipe.json').then(r=>r.text());await importFile(new File([data],'recipe.json',{type:'application/json'}));return;}
-  if(action==='library'){await releaseWake();view='library';render();window.scrollTo(0,0);return;}
+  if(action==='library'){if(modal.open)modal.close();await releaseWake();view='library';render();window.scrollTo(0,0);return;}
   if(action==='overview'){selected=library.find(r=>r.id===id);target=selected.recipe.yield.quantity;units='original';view='overview';render();window.scrollTo(0,0);return;}
   if(action==='delete'){selected=library.find(r=>r.id===id);showModal(`<h2>Remove this recipe?</h2><p>${esc(selected.recipe.title)} will be removed from this device. You can import it again.${session?.record.id===id?' Your active cooking session will keep its own copy.':''}</p>${button('Remove recipe','confirm-delete',`data-id="${esc(id)}"`,'danger')}${button('Keep recipe','close-modal')}`);return;}
   if(action==='confirm-delete'){await write('recipes',id);library=library.filter(r=>r.id!==id);modal.close();render();toast('Recipe removed from this device.');return;}
@@ -172,6 +171,7 @@ async function handleAction(el){
   if(action==='sound'){await activateAudio(true);render();toast(audioReady?'Sound enabled. You’ll hear a chime when a timer finishes.':'Sound could not start. Use visual alerts and check your device sound settings.');return;}
   if(action==='retry-save'){storageError='';await databaseRetry();return;}
   if(!session)return;
+  if(action==='cooking-menu'){showModal(`<h2>Cooking options</h2><div class="session-meta"><span>${icon('pot')} ${number(session.target)} ${esc(session.record.recipe.yield.unit)} · ${session.units==='original'?'As written':session.units==='metric'?'Metric':'Imperial'}</span><span id="wake-status">${icon('screen')} ${esc(wakeStatus)}</span><button class="sound-status" data-action="sound">${icon('sound')} ${audioReady?'Sound on':'Enable sound'}</button></div><div class="button-stack cooking-menu-actions">${button('Overview','session-overview','','secondary','book')}${button('My recipes','library','','secondary','left')}${button('Finish cooking','finish','','secondary','check')}</div>`);return;}
   if(action==='task'){session.activeTask=id;session.positions[id]??=0;if(!session.opened.includes(id))session.opened.push(id);await saveSession();render();return;}
   if(action==='previous'||action==='forward'){await browseStep(action==='previous'?-1:1);return;}
   if(action==='next'){const step=currentStep();if(!step)return;if(!session.completed.includes(step.id))session.completed.push(step.id);const steps=taskSteps(session.record.recipe,session.activeTask);session.positions[session.activeTask]=Math.min(steps.length-1,(session.positions[session.activeTask]||0)+1);await saveSession();render();if(steps.every(s=>session.completed.includes(s.id)))toast(`${taskTitle(session.activeTask)} complete. Your timers are still running.`);return;}

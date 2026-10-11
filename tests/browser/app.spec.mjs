@@ -2,9 +2,44 @@ import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {zipSync,strToU8} from 'fflate';
 const sample=JSON.parse(await readFile(new URL('../../examples/recipe.json',import.meta.url),'utf8'));
-const click=(page,action)=>action==='library'?page.getByRole('button',{name:'My recipes',exact:true}).click():page.locator(`[data-action="${action}"]`).click();
+const click=async(page,action)=>{
+  if(['library','finish'].includes(action)&&await page.locator('.cooking-page').count()&&!await page.getByRole('dialog').isVisible())await page.getByRole('button',{name:'Cooking options',exact:true}).click();
+  return action==='library'?page.getByRole('button',{name:'My recipes',exact:true}).click():page.locator(`[data-action="${action}"]`).click();
+};
 const upload=(page,recipe)=>page.locator('#file-input').setInputFiles({name:'recipe.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(recipe))});
 async function saveExample(page){await page.goto('/');await click(page,'example');await expect(page.getByText('Package validated.',{exact:false})).toBeVisible();await click(page,'save-import');await expect(page.getByRole('button',{name:'Start cooking',exact:true})).toBeVisible();}
+
+test('compact cooking header keeps instructions near the top and options remain usable',async({page})=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await saveExample(page);await click(page,'start');
+  await expect(page.locator('.header')).toHaveCount(0);
+  await expect(page.locator('.cooking-page .session-meta')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Finish cooking',exact:true})).toHaveCount(0);
+  for(const width of [390,768,1440]){
+    await page.setViewportSize({width,height:844});
+    const header=await page.locator('.cooking-top').boundingBox(),step=await page.locator('.current-step').boundingBox(),instruction=await page.locator('.instruction').boundingBox();
+    expect(header.height).toBeLessThanOrEqual(48);expect(step.y).toBeLessThan(200);expect(instruction.y).toBeLessThan(400);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+  }
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/cooking-minimal-phone.png',animations:'disabled'});
+  await page.setViewportSize({width:1440,height:1000});await page.reload();await click(page,'resume');await expect(page.locator('.cooking-top')).toHaveCount(1);await page.screenshot({path:'artifacts/cooking-minimal-desktop.png',fullPage:true});
+  await page.locator('.task-button[data-id="sauce"]').click();await click(page,'start-timer');
+  await click(page,'cooking-menu');
+  await expect(page.getByRole('dialog')).toContainText('2 servings · As written');
+  await expect(page.locator('#wake-status')).toBeVisible();await expect(page.locator('.sound-status')).toBeVisible();
+  await page.keyboard.press('ArrowRight');await expect(page.getByRole('heading',{name:'Simmer the sauce'})).toBeVisible();
+  await click(page,'sound');await expect(page.getByRole('dialog')).toBeVisible();
+  await click(page,'session-overview');await expect(page.getByRole('dialog')).toContainText('Quantities are locked');
+  await click(page,'close-modal');await click(page,'finish');
+  await expect(page.getByRole('dialog')).toContainText('1 timer is still running');
+  await page.getByRole('button',{name:'Keep cooking',exact:true}).click();
+  await click(page,'library');await expect(page.getByRole('dialog')).not.toBeVisible();
+  await expect(page.locator('.header')).toBeVisible();await click(page,'resume');
+  await expect(page.getByRole('heading',{name:'Simmer the sauce'})).toBeVisible();
+  await expect(page.locator('.timer-card')).toHaveCount(1);
+  await expect(page.locator('.task-button[data-id="sauce"]')).toContainText('0 of 1');
+  expect(errors).toEqual([]);
+});
 
 test('browsing ahead preserves completion, task positions and saved progress',async({page})=>{
   await saveExample(page);await click(page,'start');
