@@ -95,3 +95,19 @@ test('blocked storage still switches themes and reports that saving failed',asyn
   await page.evaluate(()=>localStorage.setItem('cookstep.theme','bogus'));await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme','editorial-cookbook');
 });
+test('the prominent dial follows explicit starts, recovered timestamps, expiry and stopping',async({page})=>{
+  await saveExample(page);await click(page,'start');await page.locator('.task-button[data-id="sauce"]').click();
+  await expect(page.locator('.focus-status')).toHaveText('Ready to start');
+  expect((await savedSession(page)).timers).toHaveLength(0);
+  await click(page,'start-timer');await expect(page.locator('.focus-status')).toHaveText('Remaining');
+  await page.evaluate(async()=>{const {read,write}=await import('/storage.js');const s=await read('sessions','active');s.timers[0].startedAt=Date.now()-300000;await write('sessions',s);});
+  await page.reload();await click(page,'resume');await expect(page.locator('.focus-digits')).toContainText('04:');
+  const progress=await page.locator('.step-clock').evaluate(el=>parseFloat(el.style.getPropertyValue('--timer-progress')));
+  expect(progress).toBeGreaterThan(49);expect(progress).toBeLessThanOrEqual(50);
+  const before=await savedSession(page);
+  for(const theme of THEMES){await choose(page,theme.id,true);await expect(page.locator('.focus-status')).toHaveText('Remaining');expect(await savedSession(page)).toEqual(before);}
+  await page.evaluate(async()=>{const {read,write}=await import('/storage.js');const s=await read('sessions','active');s.timers[0].startedAt=Date.now()-700000;await write('sessions',s);});
+  await page.reload();await click(page,'resume');await expect(page.locator('.focus-status')).toHaveText('Overdue · check food');
+  await page.locator('.timer-card [data-action="stop-timer"]').click();await expect(page.locator('.focus-status')).toHaveText('Stopped');
+  expect((await savedSession(page)).completed).toEqual([]);
+});
