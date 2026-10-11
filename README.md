@@ -35,6 +35,7 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 - The timer panel collapses when idle and opens automatically when a timer starts.
 - Compact cooking header with recipe overview, library, sound, screen status and finish controls in an options menu.
 - Fullscreen toggle and an optional continuous view of every cooking step, selected in Cooking options.
+- Four switchable themes: Editorial Cookbook, Kitchen Appliance, Cozy Illustrated and Recipe Studio. Open Theme in the main navigation or Cooking options; the preference stays on this device.
 - Large per-step ingredient checkboxes with preparation progress saved across views, task switches and reloads.
 - User-started countdowns, elapsed tracking, named repeated batches, manual timers and links to originating steps.
 - Visual expiry alerts, foreground sound activation, stopped-timer acknowledgement and overdue/elapsed display.
@@ -50,6 +51,14 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 No cross-device sync, recipe extraction, in-app recipe editing, offline-loading guarantee or background/lock-screen notifications. Import separately on each device. Changing yield is locked during cooking. Source instruction prose remains unchanged; scalable quantities and convertible temperatures use structured fields.
 
 Actual iPad Chrome and Brave screen-awake, foreground sound and storage recovery require device acceptance. Desktop Chromium and responsive viewport tests do not establish iPad browser behavior. The app explicitly reports when screen wake or sound is unavailable. Browser storage can be cleared or evicted; retain original recipe packages for re-import.
+
+## Themes
+
+`src/themes.js` is the theme registry: semantic color roles, typography, radii, shadows, spacing, color scheme and a layout variant. `src/theme-scales.js` holds the shared scales and food illustration tokens. All interface styling consumes CSS custom properties. Fixed hit-target sizes, responsive breakpoints and illustration geometry are deliberately layout constraints.
+
+Add a `defineTheme(...)` entry to `THEMES`, override only the groups that differ, and run the build. The picker is generated from the registry. Reuse a layout (`editorial`, `appliance`, `illustrated`, `studio`) or add presentation rules under a new `[data-layout]` selector. Cooking markup and event handlers stay shared.
+
+The build generates `dist/themes.css` and a small early `dist/theme-boot.js` from that same registry, so the saved theme is restored before the first paint. Runtime switches update attributes and browser chrome without re-rendering the app or saving a cooking session. `cookstep.theme` in localStorage is separate from IndexedDB recipe/session data. Unknown preferences fall back to Editorial Cookbook; blocked storage permits a temporary switch and shows that saving failed. Fonts use system fallbacks, so themes do not need a network font request.
 
 ## Structure
 

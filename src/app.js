@@ -1,10 +1,14 @@
 import {formatQuantity,formatTemperature,number,taskSteps,createSession,startTimer,timerState,clockText,safeUrl} from './model.js';
 import {read,write} from './storage.js';
 import {importPackage} from './importer.js';
+import {THEMES,loadTheme,applyTheme,saveTheme} from './themes.js';
+
+let activeTheme = applyTheme(loadTheme().id);
 
 const app = document.querySelector('#app'), modal = document.querySelector('#modal');
 const esc = s => String(s ?? '').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons = {
+  palette:'<circle cx="12" cy="12" r="9"/><path d="M13 21c-2-3 5-4 3-7-1-2-4 1-5-1s3-5 1-10"/><path d="M7 8h.01M6 13h.01M9 17h.01"/>',
   book:'<path d="M4 4h6a3 3 0 0 1 3 3v13a4 4 0 0 0-4-3H4z"/><path d="M13 7a3 3 0 0 1 3-3h5v13h-4a4 4 0 0 0-4 3"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>', left:'<path d="m14 6-6 6 6 6"/>', chevron:'<path d="m9 6 6 6-6 6"/>',
@@ -33,7 +37,10 @@ function image(record,id,cover=false) {
 }
 const illustration = (type='pasta') => `<div class="dish-art ${type}" aria-hidden="true"><span class="plate"><span class="noodle n1"></span><span class="noodle n2"></span><span class="noodle n3"></span><span class="tomato t1"></span><span class="tomato t2"></span><span class="basil b1"></span><span class="basil b2"></span></span><span class="fork"></span><span class="art-note">A little calm in the kitchen.</span></div>`;
 function header() {
-  return `<header class="header"><button class="brand" data-action="library" aria-label="Cookstep home"><span class="brand-icon">${icon('pot')}</span>cookstep<span class="brand-dot">.</span></button><nav aria-label="Main navigation"><button class="nav-link ${view === 'library' ? 'selected' : ''}" data-action="library">${icon('book')}<span>My recipes</span></button><a class="nav-link" href="${GUIDE_URL}/" target="_blank">${icon('leaf')}<span>Prepare with AI</span></a></nav><span class="local-badge"><i></i> Saved on this device</span></header>`;
+  return `<header class="header"><button class="brand" data-action="library" aria-label="Cookstep home"><span class="brand-icon">${icon('pot')}</span>cookstep<span class="brand-dot">.</span></button><nav aria-label="Main navigation"><button class="nav-link ${view === 'library' ? 'selected' : ''}" data-action="library">${icon('book')}<span>My recipes</span></button><a class="nav-link" href="${GUIDE_URL}/" target="_blank">${icon('leaf')}<span>Prepare with AI</span></a><button class="nav-link theme-setting" data-action="theme-settings" aria-label="Theme" aria-haspopup="dialog">${icon('palette')}<span>Theme</span></button></nav><span class="local-badge"><i></i> Saved on this device</span></header>`;
+}
+function themeSettings() {
+  showModal(`<div class="theme-dialog"><h2>Theme</h2><p class="muted">Choose the feel of your kitchen.</p><fieldset class="theme-options"><legend>Appearance</legend>${THEMES.map(theme=>`<label class="theme-choice"><input type="radio" name="theme" value="${theme.id}" ${activeTheme.id===theme.id?'checked':''}><span class="theme-swatch" data-theme="${theme.id}" aria-hidden="true"></span><span><strong>${theme.name}</strong><small>${theme.description}</small></span></label>`).join('')}</fieldset><p class="theme-persistence" id="theme-persistence" role="status">Saved on this device. You can change it while cooking.</p>${button('Done','close-modal','','primary full')}</div>`);
 }
 function yieldLabel(recipe) { return `${number(recipe.yield.quantity)} ${esc(recipe.yield.unit)}`; }
 function recipeCard(record) {
@@ -192,6 +199,7 @@ async function cook() { view='cooking'; await activateAudio();render();await req
 async function importFile(file){if(!file||importing)return;importing=true;toast('Checking your recipe package…');try{pending=await importPackage(file);view='import';await releaseWake();render();window.scrollTo(0,0);}catch(e){showModal(`<div class="eyebrow">PACKAGE NEEDS A LITTLE WORK</div><h2>Couldn’t import this recipe</h2><p>${esc(e.message)}</p>${e.details?`<ul class="validation-errors">${e.details.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}<p class="muted">Correct the package with your AI preparer, then try again. Nothing has been saved.</p>${button('Choose another file','import','','primary','upload')}`);}finally{importing=false;document.querySelector('#file-input').value='';}}
 async function handleAction(el){
   const action=el.dataset.action,id=el.dataset.id;
+  if(action==='theme-settings'){themeSettings();return;}
   if(action==='close-modal'){modal.close();return;}
   if(action==='import'){if(modal.open)modal.close();document.querySelector('#file-input').click();return;}
   if(action==='example'){const data=await fetch('./examples/recipe.json').then(r=>r.text());await importFile(new File([data],'recipe.json',{type:'application/json'}));return;}
@@ -207,7 +215,7 @@ async function handleAction(el){
   if(action==='sound'){await activateAudio(true);render();toast(audioReady?'Sound enabled. You’ll hear a chime when a timer finishes.':'Sound could not start. Use visual alerts and check your device sound settings.');return;}
   if(action==='retry-save'){storageError='';await databaseRetry();return;}
   if(!session)return;
-  if(action==='cooking-menu'){showModal(`<h2>Cooking options</h2><label class="field-label" for="cooking-view">Cooking view</label><select id="cooking-view"><option value="steps" ${session.cookingView!=='all'?'selected':''}>Step by step</option><option value="all" ${session.cookingView==='all'?'selected':''}>All steps · scroll</option></select><div class="session-meta"><span>${icon('pot')} ${number(session.target)} ${esc(session.record.recipe.yield.unit)} · ${session.units==='original'?'As written':session.units==='metric'?'Metric':'Imperial'}</span><span id="wake-status">${icon('screen')} ${esc(wakeStatus)}</span><button class="sound-status" data-action="sound">${icon('sound')} ${audioReady?'Sound on':'Enable sound'}</button></div><div class="button-stack cooking-menu-actions">${button('Overview','session-overview','','secondary','book')}${button('My recipes','library','','secondary','left')}${button('Finish cooking','finish','','secondary','check')}</div>`);return;}
+  if(action==='cooking-menu'){showModal(`<h2>Cooking options</h2><label class="field-label" for="cooking-view">Cooking view</label><select id="cooking-view"><option value="steps" ${session.cookingView!=='all'?'selected':''}>Step by step</option><option value="all" ${session.cookingView==='all'?'selected':''}>All steps · scroll</option></select><div class="session-meta"><span>${icon('pot')} ${number(session.target)} ${esc(session.record.recipe.yield.unit)} · ${session.units==='original'?'As written':session.units==='metric'?'Metric':'Imperial'}</span><span id="wake-status">${icon('screen')} ${esc(wakeStatus)}</span><button class="sound-status" data-action="sound">${icon('sound')} ${audioReady?'Sound on':'Enable sound'}</button></div><div class="button-stack cooking-menu-actions">${button('Theme','theme-settings','','secondary','palette')}${button('Overview','session-overview','','secondary','book')}${button('My recipes','library','','secondary','left')}${button('Finish cooking','finish','','secondary','check')}</div>`);return;}
   if(action==='task'){session.activeTask=id;session.positions[id]??=0;if(!session.opened.includes(id))session.opened.push(id);await saveSession();render();if(session.cookingView==='all')scrollToStep(currentStep());return;}
   if(action==='previous'||action==='forward'){await browseStep(action==='previous'?-1:1);return;}
   if(action==='next'){const step=currentStep();if(!step)return;if(!session.completed.includes(step.id))session.completed.push(step.id);const steps=taskSteps(session.record.recipe,session.activeTask);session.positions[session.activeTask]=Math.min(steps.length-1,(session.positions[session.activeTask]||0)+1);await saveSession();render();if(steps.every(s=>session.completed.includes(s.id)))toast(`${taskTitle(session.activeTask)} complete. Your timers are still running.`);return;}
@@ -229,6 +237,11 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-action]')
 document.addEventListener('fullscreenchange',updateFullscreenButton);
 document.addEventListener('webkitfullscreenchange',updateFullscreenButton);
 document.addEventListener('change',e=>{
+  if(e.target.matches('input[name="theme"]')){
+    activeTheme=applyTheme(e.target.value);
+    const saved=saveTheme(activeTheme.id);
+    document.querySelector('#theme-persistence').textContent=saved?`${activeTheme.name} saved on this device.`:'Theme applied for this visit. Browser storage is unavailable, so this preference could not be saved.';
+  }
   if(e.target.matches('[data-ingredient-check]')&&session){
     const key=JSON.stringify([e.target.dataset.stepId,Number(e.target.dataset.useIndex)]),checked=e.target.checked;
     e.target.closest('.ingredient-check').classList.toggle('prepared',checked);
