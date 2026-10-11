@@ -136,7 +136,7 @@ export function formatTemperature(t, system) {
 }
 export function taskSteps(recipe, task) { return recipe.steps.filter(s => (s.componentId || 'main') === task); }
 export function createSession(record, target, units) {
-  return {id:'active',record:structuredClone(record),target,units,activeTask:'main',opened:['main'],positions:{main:0},completed:[],timers:[],startedAt:Date.now()};
+  return {id:'active',record:structuredClone(record),target,units,activeTask:'main',opened:['main'],positions:{main:0},completed:[],preparedIngredients:[],cookingView:'steps',timers:[],startedAt:Date.now()};
 }
 export function startTimer(session, template, step, now = Date.now(), batch = '') {
   return {instanceId:crypto.randomUUID(),templateId:template.id,label:template.label,mode:template.mode,durationSeconds:template.durationSeconds,stepId:step?.id,task:step?.componentId || session.activeTask,startedAt:now,batch:batch.trim()};

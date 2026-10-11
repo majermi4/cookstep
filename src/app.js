@@ -8,6 +8,7 @@ const icons = {
   book:'<path d="M4 4h6a3 3 0 0 1 3 3v13a4 4 0 0 0-4-3H4z"/><path d="M13 7a3 3 0 0 1 3-3h5v13h-4a4 4 0 0 0-4 3"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>', left:'<path d="m14 6-6 6 6 6"/>', chevron:'<path d="m9 6 6 6-6 6"/>',
+  fullscreen:'<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>', minimize:'<path d="M3 8h5V3m8 0v5h5M8 21v-5H3m13 5v-5h5"/>',
   upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/>', check:'<path d="m5 12 4 4L19 6"/>',
   pot:'<path d="M5 10h14v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4zM2 11h3m14 0h3M4 7h16M10 3h4"/>',
   leaf:'<path d="M20 4C7 2 2 9 6 16c8 5 15-1 14-12ZM5 21 15 10"/>', grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -18,12 +19,12 @@ const icon = name => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none
 const button = (label,action,attrs='',style='secondary',symbol='') => `<button class="btn ${style}" data-action="${action}" ${attrs}>${symbol ? icon(symbol) : ''}${label}</button>`;
 let batchName = '', idleTimerPanelOpen = false, actionQueue = Promise.resolve();
 let library = [], session = null, selected = null, view = 'library', search = '', target = 1, units = 'original', pending = null, importing = false;
-let wakeLock = null, wakeStatus = 'Screen wake not active', audio = null, audioReady = false, storageError = '', sessionSaved = true;
+let wakeLock = null, wakeStatus = 'Screen wake not active', audio = null, audioReady = false, storageError = '', sessionSaved = true, sessionSaveRevision = 0;
 const sounded = new Set(), imageUrls = new WeakMap();
 const GUIDE_URL = 'https://cookstep-recipe-guide.alightslug4.chatgpt.site';
 function toast(message) { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('show'); clearTimeout(toast.timeout); toast.timeout = setTimeout(() => el.classList.remove('show'),4200); }
 function storageFailure(e) { storageError = `Could not save on this device: ${e.message || 'storage unavailable'}. Free browser space and retry; keep this tab open until saved.`; render(); }
-async function saveSession() { if (!session) return; try { await write('sessions',session); sessionSaved = true; } catch(e) { sessionSaved = false; storageFailure(e); } }
+async function saveSession() { if (!session) return; const revision=++sessionSaveRevision;sessionSaved=false;try { await write('sessions',session); if(revision===sessionSaveRevision)sessionSaved = true; } catch(e) { sessionSaved = false; storageFailure(e); } }
 function image(record,id,cover=false) {
   const im = record.recipe.images?.find(i => i.id === id), blob = record.assets?.[id];
   if (!im || !blob) return '';
@@ -89,16 +90,48 @@ function timerCards() {
   }).join('') : '<div class="no-timers">'+icon('clock')+'<p>No timers running.<br>Start one when the food goes on.</p></div>';
 }
 function timerSubtitle(t,state) { return t.stoppedAt ? `Stopped · ${clockText(state.elapsed)} elapsed` : state.expired ? `${clockText(state.overdue)} overdue · ${clockText(state.elapsed)} elapsed` : t.mode==='elapsed' ? 'Since you started cooking' : `${clockText(state.elapsed)} elapsed`; }
-function cookingScreen() {
-  const r=session.record.recipe, steps=taskSteps(r,session.activeTask), position=session.positions[session.activeTask] || 0, step=steps[position], factor=session.target/r.yield.quantity;
-  return `<main class="cooking-page"><div class="cooking-top"><h1 title="${esc(r.title)}">${esc(r.title)}</h1>${button('','cooking-menu','aria-label="Cooking options" aria-haspopup="dialog"','secondary cooking-menu','more')}</div><div id="timer-alerts" role="alert"></div>
-  <div class="cooking-grid"><aside class="cooking-left">${taskSwitcher()}</aside><section class="current-step panel">${step ? `<div class="step-top"><span class="eyebrow">${esc(taskTitle(session.activeTask))}</span><span class="pill">STEP ${position+1} / ${steps.length}</span></div><div class="step-track">${steps.map((s,i)=>`<button class="${i===position?'current':''} ${session.completed.includes(s.id)?'complete':''}" data-action="jump" data-index="${i}" aria-label="Step ${i+1}: ${esc(s.title)}" aria-current="${i===position?'step':'false'}"></button>`).join('')}</div><h2>${esc(step.title)}</h2><p class="instruction pre-wrap">${esc(step.instruction)}</p>${step.temperature?`<div class="temperature">Setting: <strong>${formatTemperature(step.temperature,session.units)}</strong></div>`:''}
-  ${step.ingredientUses?.length ? `<div class="step-ingredient-box"><h3>For this step</h3>${step.ingredientUses.map(u=>{const i=r.ingredients.find(i=>i.id===u.ingredientId); return `<div class="ingredient-row"><span>${esc(i.name)}${i.optional?'<small>Optional</small>':''}</span><span class="amount">${u.quantity?quantityHtml(u.quantity,factor,session.units):'<small>Amount not specified for this step</small>'}</span></div>`;}).join('')}</div>`:''}
+function fullscreenActive(){return Boolean(document.fullscreenElement || document.webkitFullscreenElement);}
+function fullscreenButton(){const active=fullscreenActive(),label=active?'Exit fullscreen':'Enter fullscreen';return button('','fullscreen',`aria-label="${label}" title="${label}" aria-pressed="${active}"`,'secondary cooking-menu',active?'minimize':'fullscreen');}
+async function toggleFullscreen(){
+  try {
+    if(fullscreenActive()){
+      const exit=document.exitFullscreen || document.webkitExitFullscreen;
+      await exit.call(document);
+    }else{
+      const enter=document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+      if(!enter)throw new Error('Fullscreen unavailable');
+      await enter.call(document.documentElement);
+    }
+  }catch{toast('Fullscreen isn’t available here. Try opening Cookstep in a separate browser tab.');}
+}
+function updateFullscreenButton(){const el=document.querySelector('[data-action="fullscreen"]');if(el){const active=fullscreenActive(),label=active?'Exit fullscreen':'Enter fullscreen';el.innerHTML=icon(active?'minimize':'fullscreen');el.setAttribute('aria-label',label);el.title=label;el.setAttribute('aria-pressed',String(active));}}
+function ingredientChecks(step){
+  const r=session.record.recipe,factor=session.target/r.yield.quantity;
+  return step.ingredientUses?.length ? `<div class="step-ingredient-box"><h3>For this step</h3>${step.ingredientUses.map((u,index)=>{
+    const ingredient=r.ingredients.find(i=>i.id===u.ingredientId),key=JSON.stringify([step.id,index]),checked=session.preparedIngredients?.includes(key);
+    return `<label class="ingredient-row ingredient-check ${checked?'prepared':''}"><input type="checkbox" data-ingredient-check data-step-id="${esc(step.id)}" data-use-index="${index}" ${checked?'checked':''} aria-label="${esc(ingredient.name)} prepared"><span class="ingredient-name">${esc(ingredient.name)}${ingredient.optional?'<small>Optional</small>':''}</span><span class="amount">${u.quantity?quantityHtml(u.quantity,factor,session.units):'<small>Amount not specified for this step</small>'}</span></label>`;
+  }).join('')}</div>` : '';
+}
+function cookingStep(step,position,steps,scroll=false){
+  const done=session.completed.includes(step.id),task=step.componentId || 'main';
+  return `<article class="current-step panel" id="cooking-step-${esc(encodeURIComponent(step.id))}" data-step-id="${esc(step.id)}"><div class="step-top"><span class="eyebrow">${esc(taskTitle(task))}</span><span class="pill">STEP ${position+1} / ${steps.length}</span></div>${scroll?'':`<div class="step-track">${steps.map((s,i)=>`<button class="${i===position?'current':''} ${session.completed.includes(s.id)?'complete':''}" data-action="jump" data-index="${i}" aria-label="Step ${i+1}: ${esc(s.title)}" aria-current="${i===position?'step':'false'}"></button>`).join('')}</div>`}<h2>${esc(step.title)}</h2><p class="instruction pre-wrap">${esc(step.instruction)}</p>${step.temperature?`<div class="temperature">Setting: <strong>${formatTemperature(step.temperature,session.units)}</strong></div>`:''}
+  ${ingredientChecks(step)}
   ${(step.imageIds || []).map(id=>image(session.record,id)).join('')}
   ${step.completionCue?`<div class="completion-cue"><span>${icon('check')}</span><p><small>YOU’RE LOOKING FOR</small>${esc(step.completionCue)}</p></div>`:''}${step.notes?.length?`<div class="notes">${step.notes.map(n=>`<p>${esc(n)}</p>`).join('')}</div>`:''}
-  ${step.timers?.length?`<div class="step-timers"><h3>When you’re ready</h3>${step.timers.map(t=>`<button class="timer-start" data-action="start-timer" data-id="${esc(t.id)}"><span class="timer-start-icon">${icon('clock')}</span><span><strong>${esc(t.startLabel)}</strong><small>${t.mode==='elapsed'?'Start elapsed tracking':`Start ${clockText(t.durationSeconds)} countdown`} · ${esc(t.label)}</small></span>${icon('plus')}</button>`).join('')}<p class="small muted">Each start creates a separate timer. Add a batch name in the timer panel.</p></div>`:''}
+  ${step.timers?.length?`<div class="step-timers"><h3>When you’re ready</h3>${step.timers.map(t=>`<button class="timer-start" data-action="start-timer" data-id="${esc(t.id)}" data-step-id="${esc(step.id)}"><span class="timer-start-icon">${icon('clock')}</span><span><strong>${esc(t.startLabel)}</strong><small>${t.mode==='elapsed'?'Start elapsed tracking':`Start ${clockText(t.durationSeconds)} countdown`} · ${esc(t.label)}</small></span>${icon('plus')}</button>`).join('')}<p class="small muted">Each start creates a separate timer. Add a batch name in the timer panel.</p></div>`:''}
   ${step.suggestedComponentIds?.length?`<div class="suggested"><h3>Something to do alongside</h3><div class="button-row">${step.suggestedComponentIds.map(id=>button(esc(taskTitle(id)),'task',`data-id="${esc(id)}"`,'secondary','arrow')).join('')}</div></div>`:''}
-  <div class="step-navigation">${button('Previous','previous',`${position===0?'disabled':''} aria-keyshortcuts="ArrowLeft"`,'secondary','left')}${button('Next','forward',`${position===steps.length-1?'disabled':''} aria-keyshortcuts="ArrowRight"`,'secondary','chevron')}${button(position===steps.length-1?(session.completed.includes(step.id)?'Step complete':'Mark step done'):'Done · next step','next',`${position===steps.length-1&&session.completed.includes(step.id)?'disabled':''}`,'primary step-complete','check')}</div>${session.completed.includes(step.id)?'<p class="completed-label">'+icon('check')+' You’ve completed this step</p>':''}` : `<div class="meal-overview"><div class="eyebrow">YOUR MEAL AT A GLANCE</div><h2>Make room for the good stuff.</h2><p>Open a task to start cooking. Each one keeps its own place, and all your timers stay in sight.</p>${(r.components||[]).map(c=>button(esc(c.title),'task',`data-id="${esc(c.id)}"`,'secondary','arrow')).join('')}</div>`}</section>
+  ${scroll?`<div class="scroll-step-actions">${button(done?'Step complete':'Mark step done','complete-step',`data-id="${esc(step.id)}" ${done?'disabled':''}`,'primary','check')}</div>`:`<div class="step-navigation">${button('Previous','previous',`${position===0?'disabled':''} aria-keyshortcuts="ArrowLeft"`,'secondary','left')}${button('Next','forward',`${position===steps.length-1?'disabled':''} aria-keyshortcuts="ArrowRight"`,'secondary','chevron')}${button(position===steps.length-1?(done?'Step complete':'Mark step done'):'Done · next step','next',`${position===steps.length-1&&done?'disabled':''}`,'primary step-complete','check')}</div>`}${done?'<p class="completed-label">'+icon('check')+' You’ve completed this step</p>':''}</article>`;
+}
+function cookingSteps(){
+  const r=session.record.recipe;
+  if(session.cookingView==='all')return `<section class="cooking-steps" aria-label="All cooking steps">${['main',...(r.components||[]).map(c=>c.id)].map(task=>{const steps=taskSteps(r,task);return steps.map((s,i)=>cookingStep(s,i,steps,true)).join('');}).join('')}</section>`;
+  const steps=taskSteps(r,session.activeTask),position=session.positions[session.activeTask]||0,step=steps[position];
+  return step?cookingStep(step,position,steps):`<section class="current-step panel"><div class="meal-overview"><div class="eyebrow">YOUR MEAL AT A GLANCE</div><h2>Make room for the good stuff.</h2><p>Open a task to start cooking. Each one keeps its own place, and all your timers stay in sight.</p>${(r.components||[]).map(c=>button(esc(c.title),'task',`data-id="${esc(c.id)}"`,'secondary','arrow')).join('')}</div></section>`;
+}
+function cookingScreen() {
+  const r=session.record.recipe;
+  return `<main class="cooking-page ${session.cookingView==='all'?'all-steps-view':''}"><div class="cooking-top"><h1 title="${esc(r.title)}">${esc(r.title)}</h1><div class="cooking-header-actions">${fullscreenButton()}${button('','cooking-menu','aria-label="Cooking options" aria-haspopup="dialog"','secondary cooking-menu','more')}</div></div><div id="timer-alerts" role="alert"></div>
+  <div class="cooking-grid"><aside class="cooking-left">${taskSwitcher()}</aside>${cookingSteps()}
   <details class="timer-panel" ${session.timers.some(t=>!t.stoppedAt)||idleTimerPanelOpen?'open':''}><summary class="timer-panel-heading"><h2>${icon('clock')} On the go</h2><span id="running-count">${session.timers.filter(t=>!t.stoppedAt).length}</span>${icon('chevron')}</summary><div id="timer-list">${timerCards()}</div>${button('Add a timer','manual','','timer-add','plus')}<label class="batch-label" for="batch-name">Name your next batch <small>(optional)</small></label><input id="batch-name" placeholder="e.g. Batch 2" maxlength="80" value="${esc(batchName)}"><p class="timer-help">Timers are reminders to check your food. They never complete a step for you.</p></details></div><button class="mobile-timer-bar" data-action="timer-drawer">${icon("clock")}<span id="mobile-timer-summary">Timers within reach</span>${icon("chevron")}</button></main>`;
 }
 function render() {
@@ -143,6 +176,8 @@ function updateTimers() {
   if(view!=='cooking'&&due.length){const el=document.querySelector('#global-timer-alert');if(!el){const banner=document.createElement('div');banner.id='global-timer-alert';banner.className='expiry-alert global';banner.innerHTML=`<strong>${due.length} timer${due.length>1?'s':''} ready to check</strong>${button('Return to cooking','resume','','dark','arrow')}`;app.insertBefore(banner,app.children[1]);}else el.querySelector('strong').textContent=`${due.length} timer${due.length>1?'s':''} ready to check`;} else document.querySelector('#global-timer-alert')?.remove();
 }
 function currentStep(){return taskSteps(session.record.recipe,session.activeTask)[session.positions[session.activeTask]||0];}
+function selectCookingStep(step){const task=step.componentId||'main';session.activeTask=task;session.positions[task]=taskSteps(session.record.recipe,task).findIndex(s=>s.id===step.id);if(!session.opened.includes(task))session.opened.push(task);}
+function scrollToStep(step){if(step)document.getElementById(`cooking-step-${encodeURIComponent(step.id)}`)?.scrollIntoView({block:'start'});}
 async function browseStep(direction) {
   const steps=taskSteps(session.record.recipe,session.activeTask);
   if(!steps.length)return;
@@ -151,6 +186,7 @@ async function browseStep(direction) {
   if(nextPosition===position)return;
   session.positions[session.activeTask]=nextPosition;
   await saveSession();render();
+  if(session.cookingView==='all')scrollToStep(currentStep());
 }
 async function cook() { view='cooking'; await activateAudio();render();await requestWake(); }
 async function importFile(file){if(!file||importing)return;importing=true;toast('Checking your recipe package…');try{pending=await importPackage(file);view='import';await releaseWake();render();window.scrollTo(0,0);}catch(e){showModal(`<div class="eyebrow">PACKAGE NEEDS A LITTLE WORK</div><h2>Couldn’t import this recipe</h2><p>${esc(e.message)}</p>${e.details?`<ul class="validation-errors">${e.details.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}<p class="muted">Correct the package with your AI preparer, then try again. Nothing has been saved.</p>${button('Choose another file','import','','primary','upload')}`);}finally{importing=false;document.querySelector('#file-input').value='';}}
@@ -171,13 +207,14 @@ async function handleAction(el){
   if(action==='sound'){await activateAudio(true);render();toast(audioReady?'Sound enabled. You’ll hear a chime when a timer finishes.':'Sound could not start. Use visual alerts and check your device sound settings.');return;}
   if(action==='retry-save'){storageError='';await databaseRetry();return;}
   if(!session)return;
-  if(action==='cooking-menu'){showModal(`<h2>Cooking options</h2><div class="session-meta"><span>${icon('pot')} ${number(session.target)} ${esc(session.record.recipe.yield.unit)} · ${session.units==='original'?'As written':session.units==='metric'?'Metric':'Imperial'}</span><span id="wake-status">${icon('screen')} ${esc(wakeStatus)}</span><button class="sound-status" data-action="sound">${icon('sound')} ${audioReady?'Sound on':'Enable sound'}</button></div><div class="button-stack cooking-menu-actions">${button('Overview','session-overview','','secondary','book')}${button('My recipes','library','','secondary','left')}${button('Finish cooking','finish','','secondary','check')}</div>`);return;}
-  if(action==='task'){session.activeTask=id;session.positions[id]??=0;if(!session.opened.includes(id))session.opened.push(id);await saveSession();render();return;}
+  if(action==='cooking-menu'){showModal(`<h2>Cooking options</h2><label class="field-label" for="cooking-view">Cooking view</label><select id="cooking-view"><option value="steps" ${session.cookingView!=='all'?'selected':''}>Step by step</option><option value="all" ${session.cookingView==='all'?'selected':''}>All steps · scroll</option></select><div class="session-meta"><span>${icon('pot')} ${number(session.target)} ${esc(session.record.recipe.yield.unit)} · ${session.units==='original'?'As written':session.units==='metric'?'Metric':'Imperial'}</span><span id="wake-status">${icon('screen')} ${esc(wakeStatus)}</span><button class="sound-status" data-action="sound">${icon('sound')} ${audioReady?'Sound on':'Enable sound'}</button></div><div class="button-stack cooking-menu-actions">${button('Overview','session-overview','','secondary','book')}${button('My recipes','library','','secondary','left')}${button('Finish cooking','finish','','secondary','check')}</div>`);return;}
+  if(action==='task'){session.activeTask=id;session.positions[id]??=0;if(!session.opened.includes(id))session.opened.push(id);await saveSession();render();if(session.cookingView==='all')scrollToStep(currentStep());return;}
   if(action==='previous'||action==='forward'){await browseStep(action==='previous'?-1:1);return;}
   if(action==='next'){const step=currentStep();if(!step)return;if(!session.completed.includes(step.id))session.completed.push(step.id);const steps=taskSteps(session.record.recipe,session.activeTask);session.positions[session.activeTask]=Math.min(steps.length-1,(session.positions[session.activeTask]||0)+1);await saveSession();render();if(steps.every(s=>session.completed.includes(s.id)))toast(`${taskTitle(session.activeTask)} complete. Your timers are still running.`);return;}
+  if(action==='complete-step'){const step=session.record.recipe.steps.find(s=>s.id===id);if(!step)return;selectCookingStep(step);if(!session.completed.includes(id))session.completed.push(id);await saveSession();render();return;}
   if(action==='jump'){session.positions[session.activeTask]=Number(el.dataset.index);await saveSession();render();return;}
-  if(action==='start-timer'){await activateAudio();const step=currentStep(),template=step.timers.find(t=>t.id===id);session.timers.push(startTimer(session,template,step,Date.now(),document.querySelector('#batch-name')?.value||''));await saveSession();render();toast('Timer started. You can switch tasks while it runs.');return;}
-  if(action==='timer-jump'){if(modal.open)modal.close();const t=session.timers.find(t=>t.instanceId===id);session.activeTask=t.task;session.positions[t.task]=Math.max(0,taskSteps(session.record.recipe,t.task).findIndex(s=>s.id===t.stepId));if(!session.opened.includes(t.task))session.opened.push(t.task);await saveSession();view='cooking';render();await requestWake();return;}
+  if(action==='start-timer'){await activateAudio();const step=session.record.recipe.steps.find(s=>s.id===el.dataset.stepId)||currentStep(),template=step.timers.find(t=>t.id===id);selectCookingStep(step);session.timers.push(startTimer(session,template,step,Date.now(),document.querySelector('#batch-name')?.value||''));await saveSession();render();toast('Timer started. You can switch tasks while it runs.');return;}
+  if(action==='timer-jump'){if(modal.open)modal.close();const t=session.timers.find(t=>t.instanceId===id);session.activeTask=t.task;session.positions[t.task]=Math.max(0,taskSteps(session.record.recipe,t.task).findIndex(s=>s.id===t.stepId));if(!session.opened.includes(t.task))session.opened.push(t.task);await saveSession();view='cooking';render();if(session.cookingView==='all')scrollToStep(currentStep());await requestWake();return;}
   if(action==='stop-timer'){const t=session.timers.find(t=>t.instanceId===id);t.stoppedAt=Date.now();t.acknowledgedAt=t.stoppedAt;if(!session.timers.some(t=>!t.stoppedAt))idleTimerPanelOpen=false;await saveSession();render();return;}
   if(action==='dismiss-timer'){session.timers=session.timers.filter(t=>t.instanceId!==id);await saveSession();render();return;}
   if(action==='timer-drawer'){showModal(`<div class="eyebrow">YOUR TIMERS KEEP GOING</div><h2>On the go</h2><div class="drawer-timers">${timerCards()}</div>${button('Add a timer','manual','','primary','plus')}`);modal.dataset.timers='true';return;}
@@ -188,7 +225,19 @@ async function handleAction(el){
 }
 async function databaseRetry(){try{if(session)await write('sessions',session);if(pending)toast('Storage available. Save the import when ready.');library=await read('recipes');storageError='';sessionSaved=true;render();}catch(e){storageFailure(e);}}
 function enqueue(fn){actionQueue=actionQueue.then(fn).catch(e=>{if(e.name==='QuotaExceededError'||e.name==='UnknownError')storageFailure(e);else toast(e.message||'Something went wrong. Please try again.');});}
-document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(el&&!el.disabled){if(['start','resume','sound','start-timer'].includes(el.dataset.action))activateAudio();enqueue(()=>handleAction(el));}});
+document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(el&&!el.disabled){if(el.dataset.action==='fullscreen'){toggleFullscreen();return;}if(['start','resume','sound','start-timer'].includes(el.dataset.action))activateAudio();enqueue(()=>handleAction(el));}});
+document.addEventListener('fullscreenchange',updateFullscreenButton);
+document.addEventListener('webkitfullscreenchange',updateFullscreenButton);
+document.addEventListener('change',e=>{
+  if(e.target.matches('[data-ingredient-check]')&&session){
+    const key=JSON.stringify([e.target.dataset.stepId,Number(e.target.dataset.useIndex)]),checked=e.target.checked;
+    e.target.closest('.ingredient-check').classList.toggle('prepared',checked);
+    session.preparedIngredients??=[];session.preparedIngredients=session.preparedIngredients.filter(k=>k!==key);if(checked)session.preparedIngredients.push(key);
+    sessionSaved=false;
+    enqueue(()=>saveSession());
+  }
+  if(e.target.id==='cooking-view'&&session){const mode=e.target.value;enqueue(async()=>{session.cookingView=mode==='all'?'all':'steps';await saveSession();modal.close();render();if(session.cookingView==='all')scrollToStep(currentStep());else window.scrollTo(0,0);});}
+});
 document.addEventListener('keydown',e=>{
   if(!['ArrowLeft','ArrowRight'].includes(e.key)||e.defaultPrevented||e.repeat||e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
   if(view!=='cooking'||!session||modal.open||e.target.closest('input,textarea,select,[role="textbox"]')||e.target.isContentEditable)return;

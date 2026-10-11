@@ -8,6 +8,98 @@ const click=async(page,action)=>{
 };
 const upload=(page,recipe)=>page.locator('#file-input').setInputFiles({name:'recipe.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(recipe))});
 async function saveExample(page){await page.goto('/');await click(page,'example');await expect(page.getByText('Package validated.',{exact:false})).toBeVisible();await click(page,'save-import');await expect(page.getByRole('button',{name:'Start cooking',exact:true})).toBeVisible();}
+async function cookingView(page,mode){await click(page,'cooking-menu');await page.getByLabel('Cooking view',{exact:true}).selectOption(mode);await expect(page.getByRole('dialog')).not.toBeVisible();}
+const stepCard=(page,id)=>page.locator(`.current-step[data-step-id="${id}"]`);
+
+test('fullscreen icon enters, exits and follows browser fullscreen changes',async({page})=>{
+  await saveExample(page);await click(page,'start');
+  await page.getByRole('button',{name:'Enter fullscreen',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>Boolean(document.fullscreenElement))).toBe(true);
+  await expect(page.getByRole('button',{name:'Exit fullscreen',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.keyboard.press('ArrowRight');await expect(page.getByRole('heading',{name:'Combine and serve'})).toBeVisible();
+  await page.getByRole('button',{name:'Exit fullscreen',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>Boolean(document.fullscreenElement))).toBe(false);
+  await page.getByRole('button',{name:'Enter fullscreen',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>Boolean(document.fullscreenElement))).toBe(true);
+  await page.evaluate(()=>document.exitFullscreen());
+  await expect(page.getByRole('button',{name:'Enter fullscreen',exact:true})).toHaveAttribute('aria-pressed','false');
+  await expect(page.locator('.task-button[data-id="main"]')).toContainText('0 of 2');
+  await expect(page.locator('.timer-card')).toHaveCount(0);
+});
+
+test('unavailable fullscreen gives feedback without disrupting cooking',async({page})=>{
+  await saveExample(page);await click(page,'start');
+  await page.evaluate(()=>{document.documentElement.requestFullscreen=()=>Promise.reject(new Error('Blocked'));});
+  await page.getByRole('button',{name:'Enter fullscreen',exact:true}).click();
+  await expect(page.locator('#toast')).toContainText('Fullscreen isn’t available here');
+  await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Enter fullscreen',exact:true})).toHaveAttribute('aria-pressed','false');
+});
+
+test('all steps scroll preserves timers, independent completion and the selected step',async({page})=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await saveExample(page);await click(page,'start');await cookingView(page,'all');
+  await expect(page.locator('.current-step')).toHaveCount(sample.steps.length);
+  await expect(page.locator('.current-step h2')).toHaveText(['Prepare sauce and pasta','Combine and serve','Simmer the sauce','Bring water to a boil','Cook the pasta']);
+  await expect(page.locator('.timer-card')).toHaveCount(0);
+  await stepCard(page,'simmer-sauce').getByRole('button',{name:'Sauce is simmering',exact:false}).click();
+  await stepCard(page,'cook-pasta').getByRole('button',{name:'Pasta is in the water',exact:false}).click();
+  await expect(page.locator('.timer-card')).toHaveCount(2);
+  const timers=await page.evaluate(async()=>{const {read}=await import('/storage.js');return (await read('sessions','active')).timers.map(t=>({task:t.task,step:t.stepId}));});
+  expect(timers).toEqual([{task:'sauce',step:'simmer-sauce'},{task:'pasta',step:'cook-pasta'}]);
+  await stepCard(page,'cook-pasta').getByRole('button',{name:'Mark step done',exact:true}).click();
+  await expect(page.locator('.task-button[data-id="pasta"]')).toContainText('1 of 2');
+  await expect(page.locator('.task-button[data-id="sauce"]')).toContainText('0 of 1');
+  await page.reload();await click(page,'resume');await expect(page.locator('.current-step')).toHaveCount(5);
+  await expect(stepCard(page,'cook-pasta').getByRole('button',{name:'Step complete',exact:true})).toBeDisabled();
+  await page.locator('.task-button[data-id="pasta"]').click();
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(async()=>{const rect=await stepCard(page,'boil-water').boundingBox();return rect.y;}).toBeGreaterThanOrEqual(70);
+  await page.locator('.timer-card').first().getByRole('button',{name:'View step',exact:true}).click();
+  await expect.poll(async()=>{const rect=await stepCard(page,'simmer-sauce').boundingBox();return rect.y;}).toBeLessThan(200);
+  await cookingView(page,'steps');await expect(page.locator('.current-step')).toHaveCount(1);
+  await expect(page.getByRole('heading',{name:'Simmer the sauce'})).toBeVisible();
+  await expect(page.locator('.timer-card')).toHaveCount(2);expect(errors).toEqual([]);
+});
+
+test('large ingredient checkboxes persist per step across tasks, views and reloads',async({page})=>{
+  const recipe=structuredClone(sample);recipe.steps.at(-1).ingredientUses=[{ingredientId:'tomatoes',quantity:{text:'100 g',value:100,unit:'g'}}];
+  await page.goto('/');await upload(page,recipe);await click(page,'save-import');
+  await page.locator('#target').fill('4');await page.locator('#target').press('Tab');await page.locator('#units').selectOption('metric');await click(page,'start');
+  await page.locator('.task-button[data-id="sauce"]').click();
+  const tomatoes=page.getByRole('checkbox',{name:'Chopped tomatoes prepared',exact:true}),oil=page.getByRole('checkbox',{name:'Olive oil prepared',exact:true});
+  await expect(page.locator('.step-ingredient-box')).toContainText('800 g');
+  await page.getByText('Chopped tomatoes',{exact:true}).click();await expect(tomatoes).toBeChecked();
+  await oil.focus();await page.keyboard.press('Space');await expect(oil).toBeChecked();
+  const size=await tomatoes.boundingBox();expect(size.width).toBeGreaterThanOrEqual(32);expect(size.height).toBeGreaterThanOrEqual(32);
+  await expect(page.locator('.task-button[data-id="sauce"]')).toContainText('0 of 1');await expect(page.locator('.timer-card')).toHaveCount(0);
+  await page.locator('.task-button[data-id="main"]').click();await click(page,'forward');await expect(tomatoes).not.toBeChecked();
+  await cookingView(page,'all');
+  await expect(stepCard(page,'simmer-sauce').getByRole('checkbox',{name:'Chopped tomatoes prepared'})).toBeChecked();
+  await expect(stepCard(page,'combine').getByRole('checkbox',{name:'Chopped tomatoes prepared'})).not.toBeChecked();
+  await stepCard(page,'combine').getByRole('checkbox',{name:'Chopped tomatoes prepared'}).check();
+  const sauceOil=stepCard(page,'simmer-sauce').getByRole('checkbox',{name:'Olive oil prepared'});await sauceOil.uncheck();
+  await expect.poll(()=>page.evaluate(async()=>{const {read}=await import('/storage.js');return (await read('sessions','active')).preparedIngredients.includes(JSON.stringify(['simmer-sauce',0]));})).toBe(false);
+  await page.reload();await click(page,'resume');await expect(page.locator('.current-step')).toHaveCount(5);
+  await expect(stepCard(page,'simmer-sauce').getByRole('checkbox',{name:'Chopped tomatoes prepared'})).toBeChecked();
+  await expect(sauceOil).not.toBeChecked();await expect(stepCard(page,'combine').getByRole('checkbox',{name:'Chopped tomatoes prepared'})).toBeChecked();
+  for(const width of [390,768,1024,1440]){await page.setViewportSize({width,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();}
+  await page.setViewportSize({width:390,height:844});await page.reload();await click(page,'resume');await page.locator('.task-button[data-id="sauce"]').click();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.screenshot({path:'artifacts/cooking-checklist-phone.png',animations:'disabled'});
+  await page.setViewportSize({width:1440,height:1000});await page.reload();await click(page,'resume');
+  await page.evaluate(()=>{window.scrollTo(0,0);return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
+  await page.screenshot({path:'artifacts/cooking-all-steps.png',fullPage:true,animations:'disabled'});
+  await cookingView(page,'steps');await expect(page.getByRole('heading',{name:'Simmer the sauce'})).toBeVisible();await expect(tomatoes).toBeChecked();
+});
+
+test('existing sessions without view or ingredient fields still resume normally',async({page})=>{
+  await saveExample(page);await click(page,'start');await page.locator('.task-button[data-id="sauce"]').click();
+  await page.evaluate(async()=>{const {read,write}=await import('/storage.js');const s=await read('sessions','active');delete s.cookingView;delete s.preparedIngredients;await write('sessions',s);});
+  await page.reload();await click(page,'resume');await expect(page.locator('.current-step')).toHaveCount(1);
+  await page.getByRole('checkbox',{name:'Olive oil prepared'}).check();await cookingView(page,'all');
+  await expect(stepCard(page,'simmer-sauce').getByRole('checkbox',{name:'Olive oil prepared'})).toBeChecked();
+});
 
 test('compact cooking header keeps instructions near the top and options remain usable',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
