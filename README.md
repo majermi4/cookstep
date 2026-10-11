@@ -31,6 +31,8 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 - Local library and local image persistence, grouped ingredients, equipment, source attribution and original text.
 - Target yield selection, numeric and range scaling, original/metric/imperial display and Celsius/Fahrenheit conversion. Ambiguous units and qualitative amounts are identified rather than guessed.
 - Main guide and component tasks with independent progress and optional task suggestions.
+- Previous/Next buttons and left/right keyboard arrows browse steps without completing them; completion stays explicit.
+- The timer panel collapses when idle and opens automatically when a timer starts.
 - User-started countdowns, elapsed tracking, named repeated batches, manual timers and links to originating steps.
 - Visual expiry alerts, foreground sound activation, stopped-timer acknowledgement and overdue/elapsed display.
 - Responsive phone/tablet/desktop layouts, Screen Wake Lock when available, and interrupted-session recovery from saved timestamps.

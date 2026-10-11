@@ -6,13 +6,84 @@ const click=(page,action)=>action==='library'?page.getByRole('button',{name:'My 
 const upload=(page,recipe)=>page.locator('#file-input').setInputFiles({name:'recipe.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(recipe))});
 async function saveExample(page){await page.goto('/');await click(page,'example');await expect(page.getByText('Package validated.',{exact:false})).toBeVisible();await click(page,'save-import');await expect(page.getByRole('button',{name:'Start cooking',exact:true})).toBeVisible();}
 
+test('browsing ahead preserves completion, task positions and saved progress',async({page})=>{
+  await saveExample(page);await click(page,'start');
+  await expect(page.getByRole('button',{name:'Previous',exact:true})).toBeDisabled();
+  await page.getByRole('button',{name:'Next',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Combine and serve'})).toBeVisible();
+  await expect(page.locator('.task-button[data-id="main"]')).toContainText('0 of 2');
+  await expect(page.getByRole('button',{name:'Next',exact:true})).toBeDisabled();
+  await page.getByRole('button',{name:'Mark step done',exact:true}).click();
+  await expect(page.locator('.task-button[data-id="main"]')).toContainText('1 of 2');
+  await expect(page.locator('#toast')).not.toContainText('Main guide complete');
+  await click(page,'previous');await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
+  await page.locator('.task-button[data-id="pasta"]').click();await click(page,'forward');
+  await page.locator('.task-button[data-id="main"]').click();
+  await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
+  await page.reload();await click(page,'resume');
+  await expect(page.locator('.task-button[data-id="main"]')).toContainText('1 of 2');
+  await page.locator('.task-button[data-id="pasta"]').click();
+  await expect(page.getByRole('heading',{name:'Cook the pasta',exact:true})).toBeVisible();
+  await expect(page.locator('.task-button[data-id="pasta"]')).toContainText('0 of 2');
+  await expect(page.locator('.timer-card')).toHaveCount(0);
+});
+
+test('keyboard arrows browse without completion and leave typing and dialogs alone',async({page})=>{
+  await saveExample(page);await click(page,'start');
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('heading',{name:'Combine and serve'})).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.step-top .pill')).toHaveText('STEP 2 / 2');
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
+  await page.keyboard.press('Alt+ArrowRight');
+  await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
+  await page.locator('.timer-panel-heading').click();
+  await page.locator('#batch-name').fill('Batch 1');await page.locator('#batch-name').press('ArrowRight');
+  await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
+  await click(page,'manual');await page.getByLabel('What’s cooking?').fill('Pan');
+  await page.getByLabel('What’s cooking?').press('ArrowRight');
+  await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.task-button[data-id="main"]')).toContainText('0 of 2');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('heading',{name:'Combine and serve'})).toBeVisible();
+  await expect(page.locator('.task-button[data-id="main"]')).toContainText('0 of 2');
+  await expect(page.locator('.timer-card')).toHaveCount(0);
+});
+
+test('idle timers collapse, remain accessible and expand automatically for active timers',async({page})=>{
+  await saveExample(page);await click(page,'start');
+  const panel=page.locator('.timer-panel'),heading=page.locator('.timer-panel-heading');
+  await expect(panel).not.toHaveAttribute('open','');
+  await expect(heading).toBeVisible();await expect(page.locator('#batch-name')).not.toBeVisible();
+  await heading.click();await expect(page.locator('#batch-name')).toBeVisible();
+  await click(page,'forward');await expect(page.locator('#batch-name')).toBeVisible();
+  await heading.click();await expect(page.locator('#batch-name')).not.toBeVisible();
+  await page.locator('.task-button[data-id="sauce"]').click();await click(page,'start-timer');
+  await expect(panel).toHaveAttribute('open','');await expect(page.locator('.timer-card')).toBeVisible();
+  await click(page,'stop-timer');await expect(panel).not.toHaveAttribute('open','');
+  await heading.click();await expect(page.locator('.timer-card')).toContainText('Stopped');
+  await click(page,'dismiss-timer');await expect(page.locator('.timer-card')).toHaveCount(0);
+  await heading.click();await expect(panel).not.toHaveAttribute('open','');
+  await page.setViewportSize({width:390,height:844});
+  await expect(heading).toBeVisible();await click(page,'timer-drawer');
+  await page.getByRole('dialog').getByRole('button',{name:'Add a timer',exact:true}).click();
+  await page.getByLabel('What’s cooking?').fill('Pan');await page.getByRole('button',{name:'Start timer now'}).click();
+  await expect(panel).toHaveAttribute('open','');await expect(page.locator('.mobile-timer-bar')).toContainText('1 timer running');
+});
+
 test('complete example import, scaling, task progress and timestamp recovery',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await saveExample(page);await page.locator('#target').fill('3');await page.locator('#target').press('Tab');await page.locator('#units').selectOption('metric');
   await expect(page.getByText('300 g',{exact:true}).first()).toBeVisible();await expect(page.getByText('22.18 ml',{exact:true}).first()).toBeVisible();
   await click(page,'start');await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
   await page.locator('.task-button[data-id="sauce"]').click();await expect(page.getByRole('heading',{name:'Simmer the sauce'})).toBeVisible();await expect(page.locator('.step-ingredient-box')).toContainText('600 g');
-  await page.locator('#batch-name').fill('Batch 1');await click(page,'start-timer');await expect(page.locator('.timer-card')).toHaveCount(1);await page.locator('#batch-name').fill('Batch 2');await click(page,'start-timer');await expect(page.locator('.timer-card')).toHaveCount(2);
+  await page.locator('.timer-panel-heading').click();await page.locator('#batch-name').fill('Batch 1');await click(page,'start-timer');await expect(page.locator('.timer-card')).toHaveCount(1);await page.locator('#batch-name').fill('Batch 2');await click(page,'start-timer');await expect(page.locator('.timer-card')).toHaveCount(2);
   await page.locator('.task-button[data-id="pasta"]').click();await click(page,'next');await expect(page.getByRole('heading',{name:'Cook the pasta',exact:true})).toBeVisible();await click(page,'start-timer');await expect(page.locator('.timer-card')).toHaveCount(3);
   await page.reload();await expect(page.getByText('Your kitchen is still open')).toBeVisible();await click(page,'resume');await expect(page.getByRole('heading',{name:'Cook the pasta',exact:true})).toBeVisible();await expect(page.locator('.timer-card')).toHaveCount(3);await expect(page.locator('.task-button[data-id="pasta"]')).toContainText('1 of 2');
   await page.locator('.timer-card').first().getByRole('button',{name:'View step'}).click();await expect(page.getByRole('heading',{name:'Simmer the sauce'})).toBeVisible();
@@ -23,7 +94,7 @@ test('complete example import, scaling, task progress and timestamp recovery',as
 test('countdown expires visibly without completing a step and can be acknowledged',async({page})=>{
   const r=structuredClone(sample);r.steps[2].timers[0].durationSeconds=2;await page.goto('/');await upload(page,r);await click(page,'save-import');await click(page,'start');await page.locator('.task-button[data-id="sauce"]').click();await click(page,'start-timer');
   await expect(page.locator('.expiry-alert')).toContainText('Time to check Tomato sauce',{timeout:5000});await expect(page.locator('.timer-card')).toHaveClass(/expired/);await expect(page.locator('.task-button[data-id="sauce"]')).toContainText('0 of 1');
-  await page.locator('.expiry-alert').getByRole('button',{name:'I’ve checked · stop'}).click();await expect(page.locator('.expiry-alert')).toHaveCount(0);await expect(page.locator('.timer-card')).toContainText('Stopped');
+  await page.locator('.expiry-alert').getByRole('button',{name:'I’ve checked · stop'}).click();await expect(page.locator('.expiry-alert')).toHaveCount(0);await expect(page.locator('.timer-panel')).not.toHaveAttribute('open','');await page.locator('.timer-panel-heading').click();await expect(page.locator('.timer-card')).toContainText('Stopped');
   await click(page,'manual');await page.getByLabel('What’s cooking?').fill('Check pan');await page.getByLabel('Timer type').selectOption('elapsed');await page.getByRole('button',{name:'Start timer now'}).click();await expect(page.locator('.timer-card')).toHaveCount(2);await expect(page.locator('.timer-card').last()).toContainText('Elapsed');
 });
 
@@ -51,5 +122,5 @@ test('AI guide and contract are readable HTML with working examples and copy pro
 });
 
 test('component-only meal opens overview and never starts timers automatically',async({page})=>{
-  const r=structuredClone(sample);r.steps=r.steps.filter(s=>s.componentId);await page.goto('/');await upload(page,r);await click(page,'save-import');await click(page,'start');await expect(page.getByRole('heading',{name:'Make room for the good stuff.'})).toBeVisible();await expect(page.locator('.timer-card')).toHaveCount(0);await page.locator('.task-button[data-id="sauce"]').click();await expect(page.locator('.timer-card')).toHaveCount(0);await click(page,'next');await expect(page.locator('.task-button[data-id="sauce"]')).toContainText('1 of 1');await page.locator('.task-button[data-id="pasta"]').click();await expect(page.getByRole('heading',{name:'Bring water to a boil'})).toBeVisible();await expect(page.locator('.timer-card')).toHaveCount(0);
+  const r=structuredClone(sample);r.steps=r.steps.filter(s=>s.componentId);await page.goto('/');await upload(page,r);await click(page,'save-import');await click(page,'start');await expect(page.getByRole('heading',{name:'Make room for the good stuff.'})).toBeVisible();await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowLeft');await expect(page.getByRole('heading',{name:'Make room for the good stuff.'})).toBeVisible();await expect(page.locator('.timer-card')).toHaveCount(0);await page.locator('.task-button[data-id="sauce"]').click();await expect(page.locator('.timer-card')).toHaveCount(0);await click(page,'next');await expect(page.locator('.task-button[data-id="sauce"]')).toContainText('1 of 1');await page.locator('.task-button[data-id="pasta"]').click();await expect(page.getByRole('heading',{name:'Bring water to a boil'})).toBeVisible();await expect(page.locator('.timer-card')).toHaveCount(0);
 });
