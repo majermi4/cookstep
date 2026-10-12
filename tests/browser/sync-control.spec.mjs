@@ -1,0 +1,26 @@
+import {test,expect} from '@playwright/test';
+test('sync is compact in the header and supports hover, keyboard, touch and retry',async({page,browser})=>{
+  let requests=0;
+  await page.route('**/api/library',route=>{requests++;return route.fulfill({json:{records:[]}});});
+  await page.goto('/');
+  const control=page.locator('.sync-control'),trigger=page.locator('.local-badge'),action=page.getByRole('button',{name:'Sync now',exact:true});
+  await expect(trigger).toContainText('Recipes synced');
+  await expect(page.locator('.library-sync')).toHaveCount(0);
+  await expect(action).not.toBeVisible();
+  await trigger.hover();await expect(action).toBeVisible();
+  const before=requests;await action.click();await expect.poll(()=>requests).toBeGreaterThan(before);
+  await page.mouse.move(0,300);await expect(action).not.toBeVisible();
+  await page.keyboard.press('Tab');await trigger.focus();await expect(action).toBeVisible();
+  await page.keyboard.press('Tab');await expect(action).toBeFocused();
+  await page.keyboard.press('Escape');await expect(action).not.toBeVisible();await expect(trigger).toBeFocused();
+  await page.screenshot({path:'artifacts/compact-sync-desktop.png'});
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true});
+  await context.route('**/api/library',route=>route.fulfill({json:{records:[]}}));
+  const phone=await context.newPage();await phone.goto('/');
+  const mobileTrigger=phone.locator('.local-badge');await expect(mobileTrigger).toBeVisible();
+  await mobileTrigger.tap();await expect(phone.getByRole('button',{name:'Sync now',exact:true})).toBeVisible();
+  expect(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await phone.screenshot({path:'artifacts/compact-sync-phone.png'});
+  await phone.locator('.page-heading h1').tap();await expect(phone.getByRole('button',{name:'Sync now',exact:true})).not.toBeVisible();
+  await context.close();
+});
