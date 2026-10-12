@@ -230,12 +230,32 @@ test('replacement is explicit and active session keeps original title',async({pa
   await saveExample(page);await click(page,'start');const updated=structuredClone(sample);updated.title='Updated tomato pasta';await upload(page,updated);await expect(page.getByText('This recipe ID is already saved.',{exact:false})).toBeVisible();await click(page,'save-replace');await expect(page.getByRole('heading',{name:'Updated tomato pasta'})).toBeVisible();await click(page,'start');await expect(page.locator('.cooking-top h1')).toHaveText('Simple tomato pasta');await click(page,'library');await expect(page.locator('.recipe-card')).toContainText('Updated tomato pasta');await upload(page,updated);await click(page,'save-copy');await expect(page.getByRole('button',{name:'Resume current meal'})).toBeVisible();await click(page,'library');await expect(page.locator('.recipe-card')).toHaveCount(2);
 });
 
-test('bad packages remain unsaved; real PNGs persist and display with provenance',async({page})=>{
+test('bad packages remain unsaved; real PNGs persist and display without caption overlays',async({page})=>{
   await page.goto('/');const invalid=structuredClone(sample);invalid.steps[0].suggestedComponentIds=['does-not-exist'];await upload(page,invalid);await expect(page.locator('.validation-errors')).toContainText('suggestedComponentIds[0]');await click(page,'close-modal');await expect(page.locator('.recipe-card')).toHaveCount(0);
   const r=structuredClone(sample);r.images=[{id:'step-photo',path:'images/step.png',alt:'Test package illustration',kind:'illustration',origin:'ai_generated'}];r.steps[2].imageIds=['step-photo'];
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=','base64');
   await page.locator('#file-input').setInputFiles({name:'meal.zip',mimeType:'application/zip',buffer:Buffer.from(zipSync({'recipe.json':strToU8(JSON.stringify(r)),'images/step.png':png}))});
-  await expect(page.getByText('AI-generated guidance')).toBeVisible();await click(page,'save-import');await expect(page.getByRole('button',{name:'Start cooking',exact:true})).toBeVisible();await page.reload();await page.locator('.card-click').click();await click(page,'start');await page.locator('.task-button[data-id="sauce"]').click();await expect(page.getByAltText('Test package illustration')).toBeVisible();expect(await page.getByAltText('Test package illustration').evaluate(el=>el.naturalWidth)).toBe(1);await page.reload();await click(page,'resume');await expect(page.getByAltText('Test package illustration')).toBeVisible();
+  await expect(page.getByAltText('Test package illustration')).toBeVisible();await expect(page.locator('figcaption')).toHaveCount(0);await click(page,'save-import');await expect(page.getByRole('button',{name:'Start cooking',exact:true})).toBeVisible();await page.reload();await page.locator('.card-click').click();await click(page,'start');await page.locator('.task-button[data-id="sauce"]').click();await expect(page.getByAltText('Test package illustration')).toBeVisible();expect(await page.getByAltText('Test package illustration').evaluate(el=>el.naturalWidth)).toBe(1);await page.reload();await click(page,'resume');await expect(page.getByAltText('Test package illustration')).toBeVisible();
+});
+
+test('completed current steps keep their number and highlight without notes or image captions',async({page})=>{
+  const r=structuredClone(sample);r.steps.push({id:'serve-extra',title:'Serve immediately',instruction:'Serve warm.'});
+  r.images=[{id:'step-photo',path:'images/step.png',alt:'Test cooking image',kind:'illustration',origin:'ai_generated',caption:'Legacy image caption'}];
+  for(const step of r.steps){step.notes=['Redundant step explanation'];step.completionCue='Redundant completion cue';step.imageIds=['step-photo'];}
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=','base64');
+  await page.goto('/');await page.locator('#file-input').setInputFiles({name:'meal.zip',mimeType:'application/zip',buffer:Buffer.from(zipSync({'recipe.json':strToU8(JSON.stringify(r)),'images/step.png':png}))});
+  await expect(page.locator('figcaption')).toHaveCount(0);await expect(page.getByText('Redundant step explanation')).toHaveCount(0);await expect(page.getByText('Redundant completion cue')).toHaveCount(0);
+  await click(page,'save-import');await click(page,'start');await click(page,'next');await click(page,'next');await click(page,'previous');
+  const current=page.locator('.step-track button.current.complete');
+  await expect(current).toHaveAttribute('aria-current','step');await expect(current.locator('.rail-number')).toHaveText('2');await expect(current.locator('.rail-check')).toBeVisible();
+  for(const theme of ['editorial-cookbook','kitchen-appliance','cozy-illustrated','recipe-studio']){
+    await click(page,'cooking-menu');await click(page,'theme-settings');await page.locator(`input[name="theme"][value="${theme}"]`).check();await page.getByRole('button',{name:'Done',exact:true}).click();
+    const active=current.locator('.rail-number'),other=page.locator('.step-track button.complete').first().locator('.rail-number');
+    const activeStyle=await active.evaluate(el=>({background:getComputedStyle(el).backgroundColor,outline:getComputedStyle(el).outlineWidth}));
+    expect(activeStyle.outline).toBe('2px');expect(activeStyle.outline).not.toBe(await other.evaluate(el=>getComputedStyle(el).outlineWidth));
+    await expect(page.locator('.current-step .notes,.current-step .completion-cue,figcaption')).toHaveCount(0);await expect(page.getByAltText('Test cooking image').first()).toBeVisible();
+    if(theme==='kitchen-appliance')await page.screenshot({path:'artifacts/completed-current-step.png'});
+  }
 });
 
 test('phone, tablet and desktop layouts stay within their viewports',async({page})=>{

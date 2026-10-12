@@ -80,13 +80,13 @@ Each step requires a unique `id`, a short `title`, and an `instruction`. Optiona
 | `ingredientUses` | Array of `{ingredientId, quantity?}` references. Include the amount actually used in this step, especially when an ingredient is divided across steps. If omitted, the app must not assume the whole ingredient is used here. |
 | `imageIds` | Array of image identifiers relevant to this step. |
 | `timers` | Array of explicit timer suggestions, defined below. |
-| `completionCue` | Observable condition such as “onion is translucent.” |
+| `completionCue` | Legacy optional field, accepted for compatibility but not displayed. Put an essential doneness cue in `instruction` instead. |
 | `temperature` | Optional `{value, unit}` cooking temperature, with numeric `value` and unit `C` or `F`, displayed alongside the instruction and convertible between systems. |
 | `suggestedComponentIds` | Valid component IDs offered as useful tasks during this step. |
 | `sourceIds` | Valid source IDs supporting this step. |
-| `notes` | Array of clarifications or unresolved source details. |
+| `notes` | Legacy optional step field, accepted but not displayed. Omit it in new packages; put essential prerequisites in `instruction` and unresolved source gaps in recipe-level notes. |
 
-Instructions should be self-contained, retaining heat settings, temperatures, equipment, and doneness cues provided by the source. Arrange them in executable cooking order, respecting prerequisites even if source headings appear in a different order. Identify inferred guidance and adaptations explicitly.
+Instructions must be clear and to the point: use one to three short, direct sentences with only essential actions, prerequisites, heat settings, timing and doneness cues. Do not write essays, repeat the ingredient list, explain yield scaling or add commentary. Arrange them in executable cooking order, respecting prerequisites even if source headings appear in a different order. Identify inferred guidance and adaptations explicitly.
 
 Put scalable amounts in `ingredientUses.quantity` and refer to the displayed ingredients in the instruction, instead of repeating literal amounts in prose. The app does not rewrite numbers inside prose. This prevents the instruction from contradicting its scaled ingredient list.
 
@@ -133,8 +133,8 @@ Each image requires `id`, `path`, `alt`, `kind`, and `origin`:
 
 - `kind`: `photo` or `illustration`.
 - `origin`: `recipe_source`, `user_supplied`, or `ai_generated`.
-- `sourceUrl` and `caption` are optional.
-- Generated images must be labeled as generated guidance. The external AI preparer supplies useful illustrations when source step photos are missing; the app displays supplied assets and does not generate images.
+- `sourceUrl` is optional. Legacy `caption` is accepted but not displayed; omit it in new packages.
+- Record generated images with `origin: "ai_generated"` and descriptive `alt` text. Cookstep shows no caption overlays; keep attribution and provenance in metadata. The external AI preparer supplies useful illustrations when source step photos are missing; the app displays supplied assets and does not generate images.
 - Missing images do not invalidate a recipe. Referenced files must exist; never substitute nonexistent files or unlabeled placeholders.
 - Associate a photo with a step only when it clearly depicts that step. Use `coverImageId` for a finished-dish photo.
 
@@ -159,7 +159,7 @@ Draft 0.1 files require explicit migration or re-preparation; do not silently re
 - Put quantities used by each step in `ingredientUses` when known.
 - Attach countdown or elapsed timer templates to the steps where activities start, with explicit user start actions; do not invent cooking durations or silently replace ranges with one number.
 - Bundle available, relevant images and record their origin. Do not substitute a finished-dish image for a missing step image.
-- Record ambiguity in `notes` rather than making an unsupported correction.
+- Record unresolved source ambiguity briefly in recipe-level `notes` rather than making an unsupported correction. Omit step notes and image captions.
 - Do not include app session state, executable content, or embedded credentials.
 
 See [AI_RECIPE_GUIDE.md](AI_RECIPE_GUIDE.md) for the shareable agent workflow and copyable preparation prompt.

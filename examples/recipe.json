@@ -4,53 +4,142 @@
   "title": "Simple tomato pasta",
   "description": "Illustrative recipe for demonstrating the import format.",
   "language": "en",
-  "yield": {"quantity": 2, "unit": "servings"},
+  "yield": {
+    "quantity": 2,
+    "unit": "servings"
+  },
   "servings": 2,
   "components": [
-    {"id": "sauce", "title": "Tomato sauce"},
-    {"id": "pasta", "title": "Cook pasta"}
+    {
+      "id": "sauce",
+      "title": "Tomato sauce"
+    },
+    {
+      "id": "pasta",
+      "title": "Cook pasta"
+    }
   ],
-  "equipment": ["Saucepan", "Frying pan", "Colander"],
+  "equipment": [
+    "Saucepan",
+    "Frying pan",
+    "Colander"
+  ],
   "ingredients": [
-    {"id": "pasta", "name": "Dried pasta", "quantity": {"text": "200 g", "value": 200, "unit": "g"}},
-    {"id": "tomatoes", "name": "Chopped tomatoes", "quantity": {"text": "400 g", "value": 400, "unit": "g"}},
-    {"id": "oil", "name": "Olive oil", "quantity": {"text": "1 US tbsp", "value": 1, "unit": "tbsp_us"}},
-    {"id": "salt", "name": "Salt", "quantity": {"text": "to taste"}}
+    {
+      "id": "pasta",
+      "name": "Dried pasta",
+      "quantity": {
+        "text": "200 g",
+        "value": 200,
+        "unit": "g"
+      }
+    },
+    {
+      "id": "tomatoes",
+      "name": "Chopped tomatoes",
+      "quantity": {
+        "text": "400 g",
+        "value": 400,
+        "unit": "g"
+      }
+    },
+    {
+      "id": "oil",
+      "name": "Olive oil",
+      "quantity": {
+        "text": "1 US tbsp",
+        "value": 1,
+        "unit": "tbsp_us"
+      }
+    },
+    {
+      "id": "salt",
+      "name": "Salt",
+      "quantity": {
+        "text": "to taste"
+      }
+    }
   ],
   "steps": [
     {
       "id": "start-components",
       "title": "Prepare sauce and pasta",
-      "instruction": "Open the sauce sub-session to start it cooking. While the sauce simmers, open the pasta sub-session. You can switch between both at any time; timers continue running.",
-      "suggestedComponentIds": ["sauce", "pasta"]
+      "instruction": "Start the sauce, then cook the pasta while it simmers.",
+      "suggestedComponentIds": [
+        "sauce",
+        "pasta"
+      ]
     },
     {
       "id": "boil-water",
       "componentId": "pasta",
       "title": "Bring water to a boil",
       "instruction": "Bring a saucepan of water to a boil and salt to taste.",
-      "ingredientUses": [{"ingredientId": "salt", "quantity": {"text": "to taste"}}],
-      "completionCue": "The water is boiling."
+      "ingredientUses": [
+        {
+          "ingredientId": "salt",
+          "quantity": {
+            "text": "to taste"
+          }
+        }
+      ]
     },
     {
       "id": "simmer-sauce",
       "componentId": "sauce",
       "title": "Simmer the sauce",
-      "instruction": "Add the oil and tomatoes to a frying pan. Bring to a simmer, then cook gently for 10 minutes, stirring occasionally. Start the timer when the sauce is simmering. You can work in the pasta sub-session while it runs.",
+      "instruction": "Add oil and tomatoes to a frying pan. Simmer gently for 10 minutes, stirring occasionally.",
       "ingredientUses": [
-        {"ingredientId": "oil", "quantity": {"text": "1 US tbsp", "value": 1, "unit": "tbsp_us"}},
-        {"ingredientId": "tomatoes", "quantity": {"text": "400 g", "value": 400, "unit": "g"}}
+        {
+          "ingredientId": "oil",
+          "quantity": {
+            "text": "1 US tbsp",
+            "value": 1,
+            "unit": "tbsp_us"
+          }
+        },
+        {
+          "ingredientId": "tomatoes",
+          "quantity": {
+            "text": "400 g",
+            "value": 400,
+            "unit": "g"
+          }
+        }
       ],
-      "timers": [{"id": "sauce-timer", "label": "Tomato sauce", "mode": "countdown", "durationSeconds": 600, "startLabel": "Sauce is simmering"}]
+      "timers": [
+        {
+          "id": "sauce-timer",
+          "label": "Tomato sauce",
+          "mode": "countdown",
+          "durationSeconds": 600,
+          "startLabel": "Sauce is simmering"
+        }
+      ]
     },
     {
       "id": "cook-pasta",
       "componentId": "pasta",
       "title": "Cook the pasta",
-      "instruction": "Add the pasta to the boiling water and cook for the time stated on its packet. Start elapsed tracking when you add it, or set a manual countdown using the packet duration. Check before draining.",
-      "ingredientUses": [{"ingredientId": "pasta", "quantity": {"text": "200 g", "value": 200, "unit": "g"}}],
-      "timers": [{"id": "pasta-timer", "label": "Pasta cooking", "mode": "elapsed", "startLabel": "Pasta is in the water"}],
-      "completionCue": "The pasta is cooked to your preference."
+      "instruction": "Add pasta to boiling water. Cook for the packet time until done to your preference.",
+      "ingredientUses": [
+        {
+          "ingredientId": "pasta",
+          "quantity": {
+            "text": "200 g",
+            "value": 200,
+            "unit": "g"
+          }
+        }
+      ],
+      "timers": [
+        {
+          "id": "pasta-timer",
+          "label": "Pasta cooking",
+          "mode": "elapsed",
+          "startLabel": "Pasta is in the water"
+        }
+      ]
     },
     {
       "id": "combine",

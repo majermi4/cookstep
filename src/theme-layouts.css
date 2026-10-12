@@ -34,6 +34,10 @@
 .step-track button.current .rail-number{color:var(--on-primary);background:var(--primary)}
 .step-track button.complete .rail-number{color:var(--on-primary);background:var(--heading-soft)}
 .rail-number svg{width:14px;height:14px}
+.step-track button.current .rail-number{color:var(--on-primary);background:var(--primary);outline:2px solid var(--accent);outline-offset:3px;}
+.rail-check{position:absolute;right:-5px;top:-5px;width:14px;height:14px;display:grid;place-items:center;border-radius:50%;background:var(--heading-soft);color:var(--on-primary);border:1px solid var(--surface);}
+.rail-check svg{width:10px;height:10px;}
+
 .rail-image,.rail-copy{display:none}
 .step-copy{grid-column:1/8;grid-row:3;min-width:0}
 .step-copy h2{font-size:clamp(32px,3.3vw,50px);font-weight:600;line-height:1.15;letter-spacing:-1.2px;margin-bottom:18px;text-wrap:balance}
