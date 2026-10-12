@@ -2,6 +2,9 @@
 
 Status: first-version product spec. Implemented on 2026-10-10; see README.md and IMPLEMENTATION.md for delivery and verification. Discovery requirements remain below. Actual iPad Chrome/Brave device acceptance is pending.
 
+**Storage scope update — 2026-10-12:** The recipe library and bundled images now sync through the private Cookstep Site to the same signed-in account on computer, iPad and iPhone. This supersedes the local-only library and separate-import requirements below. Existing local recipes migrate automatically; interrupted writes remain in a durable local queue. Synced deletions and concurrent-replacement copies prevent accidental restoration or overwriting. Cooking sessions, progress, timers and theme preferences remain device-local. Household sharing and guaranteed offline loading remain deferred.
+
+
 ## Product purpose
 
 Store recipes supplied by the user and guide them through cooking with a focused, visual experience that reduces scrolling, repeated screen unlocking, and forgotten cooking times.

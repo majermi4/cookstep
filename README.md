@@ -1,6 +1,6 @@
 # Cookstep
 
-A personal browser recipe library and cooking guide built from PRODUCT_SPEC.md. Recipes, bundled image Blobs, active-session snapshots, task progress and timer timestamps are stored in IndexedDB on each device. No recipe data is uploaded to a server.
+A personal browser recipe library and cooking guide built from PRODUCT_SPEC.md. Recipes and their bundled images sync through ChatGPT Sites D1 and R2 storage, scoped to the signed-in account. IndexedDB keeps local recipe copies and a durable queue for interrupted uploads. Active-session snapshots, cooking progress, timer timestamps and theme preferences stay on each device.
 
 ## Run locally
 
@@ -9,10 +9,11 @@ Requires Node 22+.
 ```sh
 npm ci
 npm run build
-npm run dev
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_harsh_big_bertha.sql
+node scripts/run-framework.mjs dev --port 4173
 ```
 
-Open http://127.0.0.1:4173. Rebuild after changing source files. The app is served from `dist/`.
+Open http://127.0.0.1:4173. Sign in using the local sign-in link to test cloud storage. Local D1/R2 data is separate from production. Run the build after changing the vanilla browser code; Vinext serves its generated assets from `public/`.
 
 ## Verify
 
@@ -28,7 +29,7 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 
 - JSON and ZIP package import, version 0.2 validation, full preview and explicit save.
 - Duplicate-ID replacement or independent copy; existing cooking sessions retain a recipe snapshot.
-- Local library and local image persistence, grouped ingredients, equipment, source attribution and original text.
+- Synced recipe library and images, local caching, durable upload retries, conflict copies, synced deletions, grouped ingredients, equipment, source attribution and original text.
 - Target yield selection, numeric and range scaling, original/metric/imperial display and Celsius/Fahrenheit conversion. Ambiguous units and qualitative amounts are identified rather than guessed.
 - Main guide and component tasks with independent progress and optional task suggestions.
 - Previous/Next buttons and left/right keyboard arrows browse steps without completing them; completion stays explicit.
@@ -48,7 +49,9 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 
 ## Scope and verification limits
 
-No cross-device sync, recipe extraction, in-app recipe editing, offline-loading guarantee or background/lock-screen notifications. Import separately on each device. Changing yield is locked during cooking. Source instruction prose remains unchanged; scalable quantities and convertible temperatures use structured fields.
+Import once, wait for “Recipes synced across devices”, and open the same private Site while signed into the same account on other devices. Existing recipes on this origin migrate automatically; use Sync now or Retry sync to refresh. Library syncing runs on launch, reconnection, return to the tab and every minute while visible. Simultaneous replacements preserve a separate copy instead of overwriting another device’s edits.
+
+No recipe extraction, in-app recipe editing, offline-loading guarantee or background/lock-screen notifications. Cooking sessions and timers remain device-local. Changing yield is locked during cooking. Source instruction prose remains unchanged; scalable quantities and convertible temperatures use structured fields.
 
 Actual iPad Chrome and Brave screen-awake, foreground sound and storage recovery require device acceptance. Desktop Chromium and responsive viewport tests do not establish iPad browser behavior. The app explicitly reports when screen wake or sound is unavailable. Browser storage can be cleared or evicted; retain original recipe packages for re-import.
 

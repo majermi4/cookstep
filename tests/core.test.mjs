@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {zipSync,strToU8} from 'fflate';
 import {validateRecipe,formatQuantity,formatTemperature,UNITS,createSession,startTimer,timerState,taskSteps,safePath} from '../src/model.js';
-import {importPackage} from '../dist/importer.js';
+import {importPackage} from '../public/importer.js';
 const example=JSON.parse(await readFile(new URL('../examples/recipe.json',import.meta.url),'utf8'));
 const fresh=()=>structuredClone(example);
 const file=(data,name)=>new File([data],name);

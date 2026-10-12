@@ -5,7 +5,10 @@ const positive = v => typeof v === 'number' && Number.isFinite(v) && v > 0;
 export const safePath = p => typeof p === 'string' && p.length > 0 && !p.startsWith('/') && !p.includes('\\') && !p.includes(':') && !p.split('/').some(s => s === '..' || s === '.');
 export const safeUrl = url => { try { return ['https:', 'http:'].includes(new URL(url).protocol); } catch { return false; } };
 
-/** Validate the complete manifest without coercing source data. Returns field-specific errors. */
+/** Validate the complete manifest without coercing source data. Returns field-specific errors.
+ * @param {any} r
+ * @param {Set<string> | null} [files]
+ */
 export function validateRecipe(r, files = null) {
   const errors = [];
   const fail = (p, m) => errors.push(`${p}: ${m}`);

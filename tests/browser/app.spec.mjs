@@ -1,3 +1,4 @@
+import './local-library-fixture.mjs';
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {zipSync,strToU8} from 'fflate';

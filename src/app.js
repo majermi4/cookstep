@@ -1,5 +1,6 @@
 import {formatQuantity,formatTemperature,number,taskSteps,createSession,startTimer,timerState,clockText,safeUrl} from './model.js';
 import {read,write} from './storage.js';
+import {createLibrarySync} from './sync.js';
 import {importPackage} from './importer.js';
 import {THEMES,loadTheme,applyTheme,saveTheme} from './themes.js';
 
@@ -25,6 +26,17 @@ let batchName = '', idleTimerPanelOpen = false, actionQueue = Promise.resolve();
 let library = [], session = null, selected = null, view = 'library', search = '', target = 1, units = 'original', pending = null, importing = false;
 let wakeLock = null, wakeStatus = 'Screen wake not active', audio = null, audioReady = false, storageError = '', sessionSaved = true, sessionSaveRevision = 0;
 const sounded = new Set(), imageUrls = new WeakMap();
+let syncStatus={state:'syncing',message:'Loading synced recipes…'};
+const cloud=createLibrarySync({
+  changed:async()=>{const next=await read('recipes');const differs=JSON.stringify(next.map(r=>[r.id,r.cloudRevision,r.savedAt]))!==JSON.stringify(library.map(r=>[r.id,r.cloudRevision,r.savedAt]));library=next;if(!differs)return;if(view==='overview'&&selected){const latest=library.find(r=>r.id===selected.id);if(latest)selected=latest;else{selected=null;view='library';}}if(view!=='cooking')render();},
+  status:value=>{syncStatus=value;updateSyncStatus();},
+  notice:message=>toast(message),
+});
+function syncPanel(){return `<section class="library-sync" aria-label="Recipe sync"><div><strong role="status">${esc(syncStatus.message)}</strong><p>${esc(syncStatus.detail||'Import on your computer, then open Cookstep with the same account on your iPad or iPhone. Cooking progress and timers stay on this device.')}</p></div>${syncStatus.state==='signin'?'<a class="btn secondary" href="/signin-with-chatgpt?return_to=%2F" target="_top">Sign in</a>':button(syncStatus.state==='error'||syncStatus.state==='pending'?'Retry sync':'Sync now','sync-library','','secondary')}</section>`;}
+function updateSyncStatus(){
+  const badge=document.querySelector('.local-badge');if(badge)badge.innerHTML='<i></i>'+esc(syncStatus.state==='synced'?'Recipes synced':syncStatus.state==='syncing'?'Syncing recipes…':'Saved on this device');
+  const panel=document.querySelector('.library-sync');if(panel)panel.outerHTML=syncPanel();
+}
 const GUIDE_URL = 'https://cookstep-recipe-guide.alightslug4.chatgpt.site';
 function toast(message) { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('show'); clearTimeout(toast.timeout); toast.timeout = setTimeout(() => el.classList.remove('show'),4200); }
 function storageFailure(e) { storageError = `Could not save on this device: ${e.message || 'storage unavailable'}. Free browser space and retry; keep this tab open until saved.`; render(); }
@@ -51,7 +63,7 @@ function focusClock(step) {
   return `<div class="step-clock" data-focus-step="${esc(step.id)}"><div class="focus-dial"><small class="focus-title">${template.mode==='elapsed'?'TRACK TIME':'COOK FOR'}</small><strong class="focus-digits">${template.mode==='elapsed'?'0:00':clockText(template.durationSeconds)}</strong><span class="focus-status">Ready to start</span></div><p class="focus-label">${esc(template.label)}</p></div>`;
 }
 function header() {
-  return `<header class="header"><button class="brand" data-action="library" aria-label="Cookstep home"><span class="brand-icon">${icon('pot')}</span>cookstep<span class="brand-dot">.</span></button><nav aria-label="Main navigation"><button class="nav-link ${view === 'library' ? 'selected' : ''}" data-action="library">${icon('book')}<span>My recipes</span></button><a class="nav-link" href="${GUIDE_URL}/" target="_blank">${icon('leaf')}<span>Prepare with AI</span></a><button class="nav-link theme-setting" data-action="theme-settings" aria-label="Theme" aria-haspopup="dialog">${icon('palette')}<span>Theme</span></button></nav><span class="local-badge"><i></i> Saved on this device</span></header>`;
+  return `<header class="header"><button class="brand" data-action="library" aria-label="Cookstep home"><span class="brand-icon">${icon('pot')}</span>cookstep<span class="brand-dot">.</span></button><nav aria-label="Main navigation"><button class="nav-link ${view === 'library' ? 'selected' : ''}" data-action="library">${icon('book')}<span>My recipes</span></button><a class="nav-link" href="${GUIDE_URL}/" target="_blank">${icon('leaf')}<span>Prepare with AI</span></a><button class="nav-link theme-setting" data-action="theme-settings" aria-label="Theme" aria-haspopup="dialog">${icon('palette')}<span>Theme</span></button></nav><span class="local-badge"><i></i> ${syncStatus.state==='synced'?'Recipes synced':syncStatus.state==='syncing'?'Syncing recipes…':'Saved on this device'}</span></header>`;
 }
 function themeSettings() {
   showModal(`<div class="theme-dialog"><h2>Theme</h2><p class="muted">Choose the feel of your kitchen.</p><fieldset class="theme-options"><legend>Appearance</legend>${THEMES.map(theme=>`<label class="theme-choice"><input type="radio" name="theme" value="${theme.id}" ${activeTheme.id===theme.id?'checked':''}><span class="theme-swatch" data-theme="${theme.id}" aria-hidden="true"></span><span><strong>${theme.name}</strong><small>${theme.description}</small></span></label>`).join('')}</fieldset><p class="theme-persistence" id="theme-persistence" role="status">Saved on this device. You can change it while cooking.</p>${button('Done','close-modal','','primary full')}</div>`);
@@ -64,7 +76,7 @@ function recipeCard(record) {
 function libraryScreen() {
   const heroRecipe = library.find(record=>record.recipe.coverImageId&&record.assets?.[record.recipe.coverImageId]);
   const filtered = library.filter(r => r.recipe.title.toLowerCase().includes(search.toLowerCase()));
-  return `<main class="library-page"><section class="page-heading"><div><div class="eyebrow">YOUR PERSONAL RECIPE BOOK</div><h1>Good food.<br><span>A clearer head.</span></h1><p>Keep your recipes together. Take cooking one step at a time.</p></div><div class="library-art">${heroRecipe?`<div class="library-photo">${image(heroRecipe,heroRecipe.recipe.coverImageId,true)}</div>`:''}${botanical()}${cozyArt()}</div>${button('Import recipe','import','','primary','plus')}</section>
+  return `<main class="library-page">${syncPanel()}<section class="page-heading"><div><div class="eyebrow">YOUR PERSONAL RECIPE BOOK</div><h1>Good food.<br><span>A clearer head.</span></h1><p>Keep your recipes together. Take cooking one step at a time.</p></div><div class="library-art">${heroRecipe?`<div class="library-photo">${image(heroRecipe,heroRecipe.recipe.coverImageId,true)}</div>`:''}${botanical()}${cozyArt()}</div>${button('Import recipe','import','','primary','plus')}</section>
   ${session ? `<section class="resume-banner"><span class="resume-icon">${icon('pot')}</span><div><strong>Your kitchen is still open</strong><p>${esc(session.record.recipe.title)} · ${session.timers.filter(t => !t.stoppedAt).length} active timers</p></div>${button('Resume cooking','resume','','dark','arrow')}</section>` : ''}
   <div class="section-heading"><h2>Your recipes <span class="count">${library.length}</span></h2>${library.length ? `<label class="search">${icon('search')}<input id="search" type="search" placeholder="Find a recipe…" value="${esc(search)}" aria-label="Find a recipe"></label>` : ''}</div>
   ${library.length ? `<section class="recipe-grid">${filtered.length ? filtered.map(recipeCard).join('') : '<p class="muted">No recipes match your search.</p>'}<button class="add-card" data-action="import"><span>${icon('plus')}</span><strong>Something delicious next?</strong><p>Import a recipe or a whole meal</p><small>JSON or ZIP · format 0.2</small></button></section>` : `<section class="empty-library"><div class="empty-copy"><span class="pill">A place for your favourites</span><h2>Your next good meal<br>starts here.</h2><p>Bring a recipe you love. We’ll keep the ingredients, steps and timers within easy reach.</p><div class="button-row">${button('Import your first recipe','import','','primary','upload')}${button('Try the example','example','','secondary','arrow')}</div><small>Have a recipe link or photo? <a href="${GUIDE_URL}/" target="_blank">Let your AI prepare it ${icon('arrow')}</a></small></div>${illustration()}<div class="empty-theme-art">${botanical()}${cozyArt()}</div></section>`}
@@ -230,15 +242,16 @@ async function cook() { view='cooking'; await activateAudio();render();await req
 async function importFile(file){if(!file||importing)return;importing=true;toast('Checking your recipe package…');try{pending=await importPackage(file);view='import';await releaseWake();render();window.scrollTo(0,0);}catch(e){showModal(`<div class="eyebrow">PACKAGE NEEDS A LITTLE WORK</div><h2>Couldn’t import this recipe</h2><p>${esc(e.message)}</p>${e.details?`<ul class="validation-errors">${e.details.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}<p class="muted">Correct the package with your AI preparer, then try again. Nothing has been saved.</p>${button('Choose another file','import','','primary','upload')}`);}finally{importing=false;document.querySelector('#file-input').value='';}}
 async function handleAction(el){
   const action=el.dataset.action,id=el.dataset.id;
+  if(action==='sync-library'){void cloud.sync();return;}
   if(action==='theme-settings'){themeSettings();return;}
   if(action==='close-modal'){modal.close();return;}
   if(action==='import'){if(modal.open)modal.close();document.querySelector('#file-input').click();return;}
   if(action==='example'){const data=await fetch('./examples/recipe.json').then(r=>r.text());await importFile(new File([data],'recipe.json',{type:'application/json'}));return;}
   if(action==='library'){if(modal.open)modal.close();await releaseWake();view='library';render();window.scrollTo(0,0);return;}
   if(action==='overview'){selected=library.find(r=>r.id===id);target=selected.recipe.yield.quantity;units='original';view='overview';render();window.scrollTo(0,0);return;}
-  if(action==='delete'){selected=library.find(r=>r.id===id);showModal(`<h2>Remove this recipe?</h2><p>${esc(selected.recipe.title)} will be removed from this device. You can import it again.${session?.record.id===id?' Your active cooking session will keep its own copy.':''}</p>${button('Remove recipe','confirm-delete',`data-id="${esc(id)}"`,'danger')}${button('Keep recipe','close-modal')}`);return;}
-  if(action==='confirm-delete'){await write('recipes',id);library=library.filter(r=>r.id!==id);modal.close();render();toast('Recipe removed from this device.');return;}
-  if(action.startsWith('save-')&&pending){let record=pending;if(action==='save-copy')record={...pending,id:crypto.randomUUID(),recipe:{...pending.recipe,id:crypto.randomUUID()}};record.recipe.id=record.id;await write('recipes',record);library=await read('recipes');pending=null;selected=record;target=record.recipe.yield.quantity;units='original';view='overview';render();toast('Recipe saved. Ready when you are.');return;}
+  if(action==='delete'){selected=library.find(r=>r.id===id);showModal(`<h2>Remove this recipe?</h2><p>${esc(selected.recipe.title)} will be removed from your synced library on all devices. You can import it again.${session?.record.id===id?' Your active cooking session will keep its own copy.':''}</p>${button('Remove recipe','confirm-delete',`data-id="${esc(id)}"`,'danger')}${button('Keep recipe','close-modal')}`);return;}
+  if(action==='confirm-delete'){await write('recipes',id);library=library.filter(r=>r.id!==id);modal.close();render();toast('Recipe removed. Syncing the change…');void cloud.sync();return;}
+  if(action.startsWith('save-')&&pending){let record=pending;if(action==='save-copy')record={...pending,id:crypto.randomUUID(),recipe:{...pending.recipe,id:crypto.randomUUID()}};record.recipe.id=record.id;await write('recipes',record);library=await read('recipes');pending=null;selected=record;target=record.recipe.yield.quantity;units='original';view='overview';render();toast('Recipe saved on this device. Uploading to your library…');void cloud.sync();return;}
   if(action==='cancel-import'){pending=null;view='library';render();return;}
   if(action==='yield-minus'||action==='yield-plus'){target=Math.min(100000,Math.max(.01,target+(action==='yield-plus'?1:-1)));render();return;}
   if(action==='start'){await activateAudio();if(!session){session=createSession(selected,target,units);await saveSession();}await cook();return;}
@@ -296,5 +309,8 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('pagehide',()=>{if(session)saveSession();});
 window.addEventListener('beforeunload',e=>{if(!sessionSaved){e.preventDefault();e.returnValue='';}});
 setInterval(updateTimers,500);
-async function init(){try{library=await read('recipes');session=await read('sessions','active')||null;}catch(e){storageError=`Browser storage is unavailable: ${e.message}. Enable storage for this site to keep recipes and cooking progress.`;}render();}
+async function init(){try{library=await read('recipes');session=await read('sessions','active')||null;}catch(e){storageError=`Browser storage is unavailable: ${e.message}. Enable storage for this site to keep recipes and cooking progress.`;}render();void cloud.sync();}
+window.addEventListener('online',()=>void cloud.sync());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void cloud.sync();});
+setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)void cloud.sync();},60000);
 init();

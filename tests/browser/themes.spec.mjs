@@ -1,3 +1,4 @@
+import './local-library-fixture.mjs';
 import {test,expect} from '@playwright/test';
 import {THEMES} from '../../src/themes.js';
 const click=(page,action)=>{
