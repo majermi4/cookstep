@@ -1,3 +1,4 @@
+import {cleanRecordTitle} from './model.js';
 let db;
 export async function database() {
   if (db) return db;
@@ -12,7 +13,10 @@ export async function database() {
 }
 export async function read(store,key) {
   const databaseInstance = await database();
-  return new Promise((resolve,reject) => { const r = databaseInstance.transaction(store).objectStore(store)[key === undefined ? 'getAll' : 'get'](key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
+  return new Promise((resolve,reject) => { const r = databaseInstance.transaction(store).objectStore(store)[key === undefined ? 'getAll' : 'get'](key); r.onsuccess = () => {
+    const clean=value=>store==='recipes'?cleanRecordTitle(value):store==='sessions'&&value?.record?{...value,record:cleanRecordTitle(value.record)}:value;
+    resolve(Array.isArray(r.result)?r.result.map(clean):clean(r.result));
+  }; r.onerror = () => reject(r.error); });
 }
 export async function write(store,record) {
   if(store==='recipes')return changeRecipe(record);
@@ -34,6 +38,7 @@ async function transaction(fn) {
   });
 }
 export function changeRecipe(record) {
+  if(typeof record!=='string')record=cleanRecordTitle(record);
   return transaction((recipes,queue)=>{
     const id=typeof record==='string'?record:record.id;
     const request=recipes.get(id);

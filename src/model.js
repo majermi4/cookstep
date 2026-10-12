@@ -1,4 +1,11 @@
 export const FORMAT_VERSION = '0.2';
+// Remove the suffix automatically added by the original sync conflict handler.
+export const recipeTitle = title => typeof title === 'string' ? title.replace(/(?: \(saved from this device\))+$/, '') : title;
+export function cleanRecordTitle(record) {
+  if(!record?.recipe)return record;
+  const title=recipeTitle(record.recipe.title);
+  return title===record.recipe.title?record:{...record,recipe:{...record.recipe,title}};
+}
 export const LIMITS = { package: 25 * 1024 ** 2, expanded: 80 * 1024 ** 2, image: 10 * 1024 ** 2, json: 2 * 1024 ** 2, files: 500 };
 const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const positive = v => typeof v === 'number' && Number.isFinite(v) && v > 0;

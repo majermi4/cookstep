@@ -32,7 +32,7 @@ export function createLibrarySync({changed=()=>{},status=()=>{},notice=()=>{}}={
         const record=await read('recipes',operation.id);
         if((meta?.revision??null)!==operation.expectedRevision){
           let copy=null;
-          if(operation.operation==='put'&&record){const id=crypto.randomUUID();copy={...record,id,cloudRevision:null,recipe:{...record.recipe,id,title:record.recipe.title+' (saved from this device)'}};}
+          if(operation.operation==='put'&&record){const id=crypto.randomUUID();copy={...record,id,cloudRevision:null,recipe:{...record.recipe,id}};}
           await resolveConflict(operation,copy);
           notice(copy?'A recipe changed on another device. Both versions were kept.':'A recipe changed on another device, so it was kept. Remove it again if needed.');
           again=true;continue;

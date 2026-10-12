@@ -1,6 +1,6 @@
 import {env} from 'cloudflare:workers';
 import {getChatGPTUser} from '../app/chatgpt-auth';
-import {validateRecipe,LIMITS} from '../src/model.js';
+import {validateRecipe,LIMITS,cleanRecordTitle} from '../src/model.js';
 
 export function json(value:unknown,status=200) {
   return Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
@@ -28,6 +28,20 @@ export async function body(request:Request) {
   try{return JSON.parse(new TextDecoder().decode(bytes));}catch{throw new CloudError('Invalid recipe JSON.');}
 }
 export function assetPrefix(user:string){return `recipes/${encodeURIComponent(user)}/`;}
+export async function readCloudRecord(key:string) {
+  const object=await env.BUCKET!.get(key);
+  if(!object)throw new CloudError('Recipe data is temporarily unavailable.',503);
+  const original=await object.json<any>();
+  const record=cleanRecordTitle(original);
+  if(record!==original){
+    // A title-only correction keeps the revision stable, so it cannot create a
+    // new sync conflict. Conditional replacement preserves concurrent writes.
+    await env.BUCKET!.put(key,JSON.stringify(record),{
+      onlyIf:{etagMatches:object.etag},httpMetadata:object.httpMetadata,customMetadata:object.customMetadata,
+    });
+  }
+  return record;
+}
 export function imageMime(bytes:Uint8Array) {
   if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return 'image/jpeg';
   if([137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v))return 'image/png';
@@ -50,5 +64,5 @@ export async function validatePayload(data:any,user:string,id:string) {
     if(total>LIMITS.expanded)throw new CloudError('Recipe images exceed 80 MB.',413);
     assets[image.id]={key:asset.key,size:object.size,type:object.httpMetadata!.contentType};
   }
-  return {id,recipe:data.recipe,assets,savedAt:Number.isFinite(data.savedAt)?data.savedAt:Date.now()};
+  return cleanRecordTitle({id,recipe:data.recipe,assets,savedAt:Number.isFinite(data.savedAt)?data.savedAt:Date.now()});
 }

@@ -1,14 +1,12 @@
 import {env} from 'cloudflare:workers';
-import {owner,handle,json,body,validatePayload,assetPrefix,CloudError} from '../../../../../lib/recipe-cloud';
+import {owner,handle,json,body,validatePayload,assetPrefix,readCloudRecord,CloudError} from '../../../../../lib/recipe-cloud';
 export const dynamic='force-dynamic';
 type Context={params:Promise<{id:string}>};
 export function GET(_request:Request,context:Context){return handle(async()=>{
   const user=await owner(),{id}=await context.params;
   const row=await env.DB!.prepare('SELECT revision, deleted, payload FROM recipes WHERE owner = ? AND id = ?').bind(user,id).first<any>();
   if(!row || row.deleted)throw new CloudError('Recipe not found.',404);
-  const object=await env.BUCKET!.get(row.payload);
-  if(!object)throw new CloudError('Recipe data is temporarily unavailable.',503);
-  return json({...await object.json<any>(),revision:row.revision});
+  return json({...await readCloudRecord(row.payload),revision:row.revision});
 });}
 async function mutate(request:Request,context:Context,deleted:boolean){return handle(async()=>{
   const user=await owner(),{id}=await context.params,data=await body(request);

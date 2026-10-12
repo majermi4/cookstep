@@ -54,8 +54,8 @@ test('concurrent replacements preserve both versions',async({browser})=>{
   await importRecipe(a,{...recipe,title:recipe.title+' from computer'});await synced(a);
   await b.unroute('**/api/library**');await b.getByRole('button',{name:'Retry sync'}).click();await synced(b);
   await expect(card(b,recipe.id)).toContainText('from computer');
-  await expect(b.getByRole('heading',{name:recipe.title+' from tablet (saved from this device)',exact:true})).toBeVisible();
-  await a.reload();await synced(a);await expect(a.getByRole('heading',{name:recipe.title+' from tablet (saved from this device)',exact:true})).toBeVisible();
+  await expect(b.getByRole('heading',{name:recipe.title+' from tablet',exact:true})).toBeVisible();
+  await a.reload();await synced(a);await expect(a.getByRole('heading',{name:recipe.title+' from tablet',exact:true})).toBeVisible();
   // Clean up only the records created by this test.
   for(const page of [a]){
     const ids=await page.evaluate(async prefix=>{const {read}=await import('/storage.js');return (await read('recipes')).filter(r=>r.recipe.title.startsWith(prefix)).map(r=>r.id);},recipe.title);
@@ -75,7 +75,7 @@ test('existing local libraries migrate and a lost save acknowledgement retries w
   // Write an old-style local record without a cloud revision or upload queue.
   await page.evaluate(async recipe=>{
     const {database}=await import('/storage.js');const db=await database();
-    await new Promise((resolve,reject)=>{const tx=db.transaction('recipes','readwrite');tx.objectStore('recipes').put({id:recipe.id,recipe,assets:{},savedAt:Date.now()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    await new Promise((resolve,reject)=>{const tx=db.transaction('recipes','readwrite');tx.objectStore('recipes').put({id:recipe.id,recipe:{...recipe,title:recipe.title+' (saved from this device)'},assets:{},savedAt:Date.now()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
   },recipe);
   let loseAcknowledgement=true;
   await page.route('**/api/library/recipes/'+recipe.id,async route=>{
