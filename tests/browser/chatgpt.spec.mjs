@@ -5,10 +5,12 @@ const base64='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAw
 async function rpc(page,name,args={}){return page.evaluate(async({name,args})=>{const response=await fetch('/mcp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})});return {status:response.status,data:await response.json()};},{name,args});}
 test('ChatGPT recipe tools save to the browser library, preserve images and sessions, and reject stale edits',async({page,request})=>{
   const discovery=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'server/discover'}});expect((await discovery.json()).result.supportedVersions).toContain('2026-07-28');
-  const list=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'tools/list'}});expect((await list.json()).result.tools.map(t=>t.name)).toContain('save_recipe');
+  const list=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'tools/list'}});const tools=(await list.json()).result.tools;expect(tools.map(t=>t.name)).toEqual(expect.arrayContaining(['save_recipe','import_recipe_image']));expect(tools.find(t=>t.name==='get_recipe_format').description).toContain('complete');
   const noAuth=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'list_recipes',arguments:{}}}});expect(noAuth.status()).toBe(401);
   await page.goto('/signin-with-chatgpt?return_to=%2F');await expect(page.locator('.sync-control')).toContainText('Recipes synced across devices');
   const format=await rpc(page,'get_recipe_format');expect(format.data.result.structuredContent.example.formatVersion).toBe('0.2');
+  const guide=await readFile(new URL('../../AI_RECIPE_GUIDE.md',import.meta.url),'utf8');expect(format.data.result.structuredContent.preparationGuide).toBe(guide);
+  for(const url of ['https://127.0.0.1/private','https://localhost/private','file:///private'])expect((await rpc(page,'import_recipe_image',{url})).data.result.isError).toBe(true);
   const uploaded=await rpc(page,'upload_recipe_image',{base64});const asset=uploaded.data.result.structuredContent;
   const recipe={...structuredClone(sample),id:crypto.randomUUID(),title:'ChatGPT test '+crypto.randomUUID(),images:[{id:'photo',path:'images/test.png',alt:'Test image',origin:'user_supplied',kind:'photo'}],coverImageId:'photo'};
   const mutationId=crypto.randomUUID();
@@ -31,6 +33,7 @@ test('ChatGPT recipe tools save to the browser library, preserve images and sess
   await page.locator('[data-action="library"]').last().click();
   await page.locator(`.card-click[data-id="${recipe.id}"]`).click();
   expect(await page.locator('.cover img').first().evaluate(img=>img.naturalWidth)).toBe(1);
+  await page.getByRole('button',{name:'ChatGPT',exact:true}).click();const editPrompt=await page.locator('#chatgpt-prompt').inputValue();expect(editPrompt).toContain(`ID: ${recipe.id}`);expect(editPrompt).toContain('My changes:');expect(editPrompt).toContain(guide.split('\n').find(line=>line.startsWith('> ')).slice(2));await page.getByRole('button',{name:'Close',exact:true}).click();
   await page.getByRole('button',{name:'Recipe options',exact:true}).click();const download=page.waitForEvent('download');await page.locator('[data-action="export-recipe"]').click();const file=await download;expect(file.suggestedFilename()).toMatch(/\.cookstep\.zip$/);
   await page.getByRole('button',{name:'My recipes',exact:true}).click();await page.locator(`[data-action="delete"][data-id="${recipe.id}"]`).click();await page.locator('[data-action="confirm-delete"]').click();await expect(page.locator('.sync-control')).toContainText('Recipes synced across devices');
 });
@@ -41,6 +44,7 @@ test('whole-library ZIP preview supports copies and works on tablet and phone',a
   await page.reload();await expect(page.locator('.add-card,.page-heading [data-action="import"],[data-action="export-library"]')).toHaveCount(0);await page.getByRole('button',{name:'Recipe library options',exact:true}).click();const download=page.waitForEvent('download');await page.locator('[data-action="export-library"]').click();const file=await download;const path=await file.path();
   await page.getByRole('button',{name:'Recipe library options',exact:true}).click();const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Import recipes',exact:true}).click();await (await chooser).setFiles({name:'cookstep-library.zip',mimeType:'application/zip',buffer:await readFile(path)});await expect(page.getByRole('heading',{name:'Import 2 recipes',exact:true})).toBeVisible();
   await page.locator('[data-action="copy-library"]').click();await expect(page.locator('.recipe-card')).toHaveCount(4);
-  await page.getByRole('button',{name:'ChatGPT',exact:true}).click();await expect(page.locator('#chatgpt-prompt')).toContainText('Use Cookstep');
+  await page.getByRole('button',{name:'ChatGPT',exact:true}).click();const prompt=await page.locator('#chatgpt-prompt').inputValue();
+  const guide=await readFile(new URL('../../AI_RECIPE_GUIDE.md',import.meta.url),'utf8');expect(prompt).toContain(guide.split('\n').find(line=>line.startsWith('> ')).slice(2));expect(prompt).toContain('import_recipe_image');expect(prompt).toContain('preparationGuide');expect(prompt).toContain('expectedRevision');
   for(const viewport of [{width:768,height:1024},{width:390,height:844}]){await page.setViewportSize(viewport);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`artifacts/chatgpt-${viewport.width}.png`});}
 });

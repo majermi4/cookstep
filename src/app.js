@@ -3,6 +3,8 @@ import {read,write,changeRecipes} from './storage.js';
 import {createLibrarySync} from './sync.js';
 import {importRecipes,exportRecipes} from './recipe-archive.js';
 import {THEMES,loadTheme,applyTheme,saveTheme} from './themes.js';
+import {createChatGPTPrompt} from './recipe-prompts.js';
+import {preparationPrompt} from './recipe-guidance.js';
 
 let activeTheme = applyTheme(loadTheme().id);
 
@@ -250,9 +252,9 @@ async function browseStep(direction) {
   if(session.cookingView==='all')scrollToStep(currentStep());
 }
 async function cook() { view='cooking'; await activateAudio();render();await requestWake(); }
-function chatGPTPrompt(){return selected?`Use Cookstep to read my recipe "${selected.recipe.title}" (ID: ${selected.id}). Apply the changes I describe, preserve its other content and images, and save it directly to my library. My changes: `:'Use Cookstep to add a recipe directly to my library. Read the recipe format, prepare faithful ingredients, steps, quantities and timer suggestions from the source I provide, then save it. My recipe: ';}
+function chatGPTPrompt(){return createChatGPTPrompt(preparationPrompt,selected);}
 function chatGPTSettings(){
-  showModal(`<h2>Recipes, straight from ChatGPT</h2><p>Connect the private Cookstep plugin in ChatGPT, then ask it to add a recipe or change one you already saved.</p><ol><li>Open Plugins → Created by you → Cookstep and choose Install or Connect.</li><li>Select Cookstep in your chat and provide a recipe link, text or photos.</li><li>Ask ChatGPT to save your recipe. Return here and use Sync now to see the changes.</li></ol><p class="notice">Updates apply to future cooking sessions. A meal already underway keeps its ingredients, progress and timers.</p><label class="field-label" for="chatgpt-prompt">A prompt to get started</label><textarea id="chatgpt-prompt" rows="5" readonly>${esc(chatGPTPrompt())}</textarea><div class="button-row">${button('Copy prompt','copy-chatgpt-prompt','','primary')}<a class="btn secondary" href="https://chatgpt.com/" target="_blank" rel="noopener">Open ChatGPT</a></div><p class="muted small">ZIP import and export include ingredients, instructions and all bundled images.</p><a href="./guide/index.html" target="_blank">Recipe preparation guide</a>`);
+  showModal(`<h2>Recipes, straight from ChatGPT</h2><p>Connect the private Cookstep plugin in ChatGPT, then ask it to add a recipe or change one you already saved. The connection includes the complete preparation guide and can import original photos from your recipe link.</p><ol><li>Open Plugins → Created by you → Cookstep and choose Install or Connect.</li><li>Select Cookstep in your chat and provide a recipe link, text or photos.</li><li>Ask ChatGPT to save your recipe. Return here and use Sync now to see the changes.</li></ol><p class="notice">Updates apply to future cooking sessions. A meal already underway keeps its ingredients, progress and timers.</p><label class="field-label" for="chatgpt-prompt">A prompt with the full preparation context</label><textarea id="chatgpt-prompt" rows="8" readonly>${esc(chatGPTPrompt())}</textarea><div class="button-row">${button('Copy prompt','copy-chatgpt-prompt','','primary')}<a class="btn secondary" href="https://chatgpt.com/" target="_blank" rel="noopener">Open ChatGPT</a></div><p class="muted small">ZIP import and export include ingredients, instructions and all bundled images.</p><a href="./guide/index.html" target="_blank">Recipe preparation guide</a>`);
 }
 async function downloadRecipes(records,wholeLibrary){
   toast('Preparing your ZIP…');try{const blob=await exportRecipes(records,wholeLibrary),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=wholeLibrary?'cookstep-library.zip':(records[0].recipe.title.replace(/[^a-z0-9]+/gi,'-').slice(0,80)||'recipe')+'.cookstep.zip';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);toast('ZIP ready. Keep it as a backup or import it into Cookstep.');}catch(error){showModal(`<h2>Couldn’t export recipes</h2><p>${esc(error.message)}</p>${button('Close','close-modal','','primary')}`);}

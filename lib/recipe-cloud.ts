@@ -1,6 +1,7 @@
 import {env} from 'cloudflare:workers';
 import {getChatGPTUser} from '../app/chatgpt-auth';
 import {validateRecipe,LIMITS,cleanRecordTitle} from '../src/model.js';
+export {imageMime} from './source-image.mjs';
 
 export function json(value:unknown,status=200) {
   return Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
@@ -41,12 +42,6 @@ export async function readCloudRecord(key:string) {
     });
   }
   return record;
-}
-export function imageMime(bytes:Uint8Array) {
-  if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return 'image/jpeg';
-  if([137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v))return 'image/png';
-  if(String.fromCharCode(...bytes.slice(0,4))==='RIFF'&&String.fromCharCode(...bytes.slice(8,12))==='WEBP')return 'image/webp';
-  return null;
 }
 export async function validatePayload(data:any,user:string,id:string) {
   if(!data || !data.recipe || data.recipe.id!==id || typeof id!=='string' || id.length>500) throw new CloudError('Recipe ID does not match.');

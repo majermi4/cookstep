@@ -1,4 +1,4 @@
-import {recipeTools,callRecipeTool} from '../../lib/recipe-tools';
+import {recipeTools,callRecipeTool,recipeInstructions} from '../../lib/recipe-tools';
 import {CloudError,json} from '../../lib/recipe-cloud';
 export const dynamic='force-dynamic';
 export async function POST(request:Request) {
@@ -16,7 +16,7 @@ export async function POST(request:Request) {
   if(rpc.id===undefined)return new Response(null,{status:202});
   if(rpc.method==='server/discover')return reply({supportedVersions:['2026-07-28'],capabilities:{tools:{}}});
   // Compatibility for clients that still use the initialize handshake.
-  if(rpc.method==='initialize')return reply({protocolVersion:'2025-03-26',capabilities:{tools:{}},serverInfo:{name:'cookstep',version:'1.0.0'},instructions:'Manage the user’s Cookstep library. Read the recipe format before preparing a recipe. Only save changes requested by the user.'});
+  if(rpc.method==='initialize')return reply({protocolVersion:'2025-03-26',capabilities:{tools:{}},serverInfo:{name:'cookstep',version:'1.1.0'},instructions:recipeInstructions});
   if(rpc.method==='ping')return reply({});
   if(rpc.method==='tools/list')return reply({tools:recipeTools});
   if(rpc.method!=='tools/call')return failure(-32601,'Method not found.');
