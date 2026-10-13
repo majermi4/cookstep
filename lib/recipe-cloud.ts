@@ -66,3 +66,27 @@ export async function validatePayload(data:any,user:string,id:string) {
   }
   return cleanRecordTitle({id,recipe:data.recipe,assets,savedAt:Number.isFinite(data.savedAt)?data.savedAt:Date.now()});
 }
+
+export async function mutateCloudRecord(user:string,id:string,data:any,deleted=false) {
+  if(typeof id!=='string' || !id || id.length>500)throw new CloudError('Invalid recipe ID.');
+  const expected=data.expectedRevision??null;
+  if(expected!==null && typeof expected!=='string')throw new CloudError('Invalid recipe revision.');
+  if(typeof data.mutationId!=='string' || !/^[0-9a-f-]{36}$/.test(data.mutationId))throw new CloudError('Invalid change identifier.');
+  const revision=data.mutationId;
+  const current=await env.DB!.prepare('SELECT revision FROM recipes WHERE owner = ? AND id = ?').bind(user,id).first<any>();
+  if(current?.revision===revision)return {revision};
+  let payload:string|null=null;
+  if(!deleted){
+    // R2 holds the full manifest so recipes near the 2 MB importer limit do
+    // not exceed D1's row-size limit. D1 commits its reference atomically.
+    const record=await validatePayload(data,user,id);
+    payload=assetPrefix(user)+'manifests/'+encodeURIComponent(id)+'/'+revision;
+    await env.BUCKET!.put(payload,JSON.stringify(record),{httpMetadata:{contentType:'application/json'}});
+  }
+  const result=await env.DB!.prepare(`INSERT INTO recipes (owner,id,revision,deleted,payload,updated_at)
+    SELECT ?,?,?,?,?,? WHERE ? IS NULL OR EXISTS (SELECT 1 FROM recipes WHERE owner = ? AND id = ? AND revision = ?)
+    ON CONFLICT(owner,id) DO UPDATE SET revision=excluded.revision,deleted=excluded.deleted,payload=excluded.payload,updated_at=excluded.updated_at
+    WHERE recipes.revision = ?`).bind(user,id,revision,deleted?1:0,payload,Date.now(),expected,user,id,expected,expected).run();
+  if(result.meta.changes!==1)throw new CloudError('This recipe changed on another device. Your local change is kept; sync again to preserve both versions.',409);
+  return {revision};
+}

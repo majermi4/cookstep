@@ -27,7 +27,9 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 
 ## What is included
 
+- ChatGPT recipe tools: find, read, add and update recipes directly in the synced library; image upload, retained images and revision conflict protection.
 - JSON and ZIP package import, version 0.2 validation, full preview and explicit save.
+- Individual recipe ZIP export and whole-library ZIP export/import, including bundled images and explicit replacement/copy choices.
 - Duplicate-ID replacement or independent copy; existing cooking sessions retain a recipe snapshot.
 - Synced recipe library and images, local caching, durable upload retries, conflict copies, synced deletions, grouped ingredients, equipment, source attribution and original text.
 - Target yield selection, numeric and range scaling, original/metric/imperial display and Celsius/Fahrenheit conversion. Ambiguous units and qualitative amounts are identified rather than guessed.
@@ -68,3 +70,11 @@ The four compositions are documented in [DESIGN.md](DESIGN.md). Editorial pairs 
 ## Structure
 
 `src/model.js` contains manifest validation, quantities and timestamp timer logic. `src/importer.js` validates and reads ZIP/JSON packages. `src/storage.js` holds IndexedDB transactions. `src/app.js` contains the interface and cooking interaction. `scripts/build.mjs` builds static app output and documentation-only `guide-site/dist/`.
+
+## Edit through ChatGPT
+
+The private Cookstep Site exposes `/mcp` through its Sites-provisioned plugin. Install or connect **Cookstep** from Plugins → Created by you, then select it in ChatGPT. Ask, for example, “Use Cookstep to change the cheese in my quesadilla recipe and save it,” or supply a recipe source and ask to add it. Return to Cookstep and use **Sync now**, or wait for the normal refresh.
+
+Tools: `get_recipe_format`, `list_recipes` (paginated search), `get_recipe`, `upload_recipe_image` (base64 JPEG/PNG/WebP), and `save_recipe`. Existing edits require the revision returned by `get_recipe`; new recipes use null. Retries keep the same UUID mutation ID. The server validates manifests and checks that each image belongs to the authenticated user. Unchanged image IDs and paths retain their stored assets when omitted. New or changed images must be uploaded first. User identity comes from trusted Sites forwarding, and reads/writes use the same account scope as browser sync. No API key or local server is needed in production.
+
+**Export recipe ZIP** is in the recipe overview; **Export library ZIP** is beside Your recipes. Library archives contain a `library.json` index and numbered recipe folders, each with its original `recipe.json` and `images/`. Import validates the whole archive before preview; accepting it commits recipes and their upload queue together on the device. Export limits match import limits (25 MB compressed, 80 MB expanded, 500 files); export recipes individually when the library exceeds them. ZIPs contain recipe data and images, not cooking progress, timers or account credentials.

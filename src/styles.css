@@ -549,3 +549,6 @@ dialog .cooking-menu-actions .btn{justify-content:flex-start;min-height:48px}
 .sync-detail{margin-top:6px;color:var(--text-muted);font-size:12px;line-height:1.5;}
 .sync-popover .btn{margin-top:12px;min-height:44px;width:100%;}
 @media(max-width:760px){.sync-control .sync-label{display:none;}.sync-mobile-icon{display:inline-flex;}.sync-control .local-badge{padding:6px;}.header .nav-link span{display:none;}}
+
+#chatgpt-prompt{width:100%;font:inherit;padding:12px;color:var(--text);background:var(--surface-soft);border:1px solid var(--line);border-radius:var(--radius-md);margin-bottom:16px;resize:vertical}
+@media(max-width:600px){.library-page>.section-heading{flex-wrap:wrap}.library-page>.section-heading .search{width:100%}}

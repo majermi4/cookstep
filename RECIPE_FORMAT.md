@@ -167,3 +167,9 @@ See [AI_RECIPE_GUIDE.md](AI_RECIPE_GUIDE.md) for the shareable agent workflow an
 ## Minimal example
 
 See [examples/recipe.json](examples/recipe.json) for a complete illustrative recipe with main-guide steps, parallel components, a countdown, and elapsed tracking, without images. To add images, include an `images` array, reference its identifiers from `imageIds` or `coverImageId`, and package the referenced files with the JSON in a ZIP.
+
+## Direct ChatGPT saves and library ZIPs
+
+The Cookstep connection uses the same recipe manifest validation. `save_recipe` requires the complete recipe, `expectedRevision` from a prior read (null for creation), and a UUID `mutationId` retained across retries. Referenced images must already exist in the user’s Cookstep storage. New images are uploaded as real JPEG/PNG/WebP bytes; unchanged image IDs and paths may reuse existing assets. Source corrections apply to future sessions.
+
+A whole-library ZIP has a root `library.json`: `{"format":"cookstep-library","version":1,"recipes":["recipes/0/recipe.json","recipes/1/recipe.json"]}`. Each numbered directory contains a normal recipe package with paths relative to that directory. Every manifest and image is validated before any recipe is saved. Recipe IDs and index paths must be unique. Existing IDs require an explicit replacement or copy choice. The same archive size and file-count limits apply.

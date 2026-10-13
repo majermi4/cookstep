@@ -23,3 +23,5 @@ guide-site/
 /public/examples/
 /public/guide/
 /app/shell.ts
+
+/app/recipe-guide.ts

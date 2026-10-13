@@ -27,7 +27,7 @@ test('recipe and image sync between independent phone/tablet devices, including 
   await expect.poll(()=>b.evaluate(async id=>{const {read}=await import('/storage.js');return (await read('recipes',id))?.recipe.title;},recipe.id)).toBe(recipe.title);
   const after=await b.evaluate(async()=>{const {read}=await import('/storage.js');return read('sessions','active');});
   expect(after.record.recipe.title).toBe(before.record.recipe.title);expect(after.timers).toEqual(before.timers);
-  await a.locator(`[data-action="delete"][data-id="${recipe.id}"]`).click();await a.locator('[data-action="confirm-delete"]').click();await synced(a);
+  await a.locator(`[data-action="delete"][data-id="${recipe.id}"]`).click();await a.locator('[data-action="confirm-delete"]').click();await expect(card(a,recipe.id)).toHaveCount(0);await synced(a);
   await b.reload();await synced(b);await expect(card(b,recipe.id)).toHaveCount(0);
   expect(await b.evaluate(async()=>{const {read}=await import('/storage.js');return Boolean(await read('sessions','active'));})).toBe(true);
   await b.setViewportSize({width:390,height:844});await b.screenshot({path:'artifacts/sync-phone.png'});

@@ -25,3 +25,9 @@ Physical iPad Chrome and Brave have not been available for testing. Check screen
 Recipe libraries and images are local to each browser, with no sync or server upload. The active session keeps a snapshot so replacements affect future sessions. Yield and units are chosen before cooking and remain fixed within that session. Times and temperatures do not scale. Missing per-step quantities are never replaced by whole-ingredient totals. Source images and generated illustrations display their provenance.
 
 The app is hosted privately; the public guide is a separate documentation-only Site containing instructions, contract and illustrative example. Private hosting may require the owner's hosting sign-in, while the guide is intended for access without sign-in. The local app itself has no account system.
+
+## ChatGPT recipe editing and ZIP backups — 2026-10-12
+
+Added a stateless Site-hosted MCP endpoint with recipe-format, paginated search, recipe read, image upload and direct save tools. The caller identity supplied by Sites selects the same D1/R2 library as browser sync. Saves share the browser mutation implementation, validate manifests/assets and require an expected revision. Unchanged images survive text edits and active sessions retain their snapshots. Manifest storage keys include the recipe ID to avoid cross-recipe collisions if a caller reuses a mutation UUID.
+
+Added recipe and whole-library ZIP downloads, validated library restore previews, and an atomic local recipe/upload-queue transaction with replacement/copy choices. Added a ChatGPT connection dialog and recipe-specific copyable edit prompts. Unit checks cover ZIP round trips with actual image bytes and corrupt-library rejection; browser checks cover direct saves, retry acknowledgement, image retention, stale-edit rejection, foreign-asset rejection, active-session isolation, ZIP downloads, library copy restore and responsive controls. Physical iPad acceptance remains pending.

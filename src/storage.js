@@ -39,19 +39,25 @@ async function transaction(fn) {
 }
 export function changeRecipe(record) {
   if(typeof record!=='string')record=cleanRecordTitle(record);
+  return changeRecipes([record]);
+}
+export function changeRecipes(records) {
   return transaction((recipes,queue)=>{
-    const id=typeof record==='string'?record:record.id;
-    const request=recipes.get(id);
-    request.onsuccess=()=>{
-      const previous=request.result;
-      const queued=queue.get(id);
-      queued.onsuccess=()=>{
-        const expectedRevision=previous?.cloudRevision??queued.result?.expectedRevision??null;
-        if(typeof record==='string')recipes.delete(id);
-        else recipes.put({...record,cloudRevision:expectedRevision});
-        queue.put({id,operation:typeof record==='string'?'delete':'put',token:crypto.randomUUID(),expectedRevision});
+    for(let record of records){
+      if(typeof record!=='string')record=cleanRecordTitle(record);
+      const id=typeof record==='string'?record:record.id;
+      const request=recipes.get(id);
+      request.onsuccess=()=>{
+        const previous=request.result;
+        const queued=queue.get(id);
+        queued.onsuccess=()=>{
+          const expectedRevision=previous?.cloudRevision??queued.result?.expectedRevision??null;
+          if(typeof record==='string')recipes.delete(id);
+          else recipes.put({...record,cloudRevision:expectedRevision});
+          queue.put({id,operation:typeof record==='string'?'delete':'put',token:crypto.randomUUID(),expectedRevision});
+        };
       };
-    };
+    }
   });
 }
 export function confirmUpload(operation,revision) {
