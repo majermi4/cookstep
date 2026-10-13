@@ -5,12 +5,14 @@ import {importRecipes,exportRecipes} from './recipe-archive.js';
 import {THEMES,loadTheme,applyTheme,saveTheme} from './themes.js';
 import {createChatGPTPrompt} from './recipe-prompts.js';
 import {preparationPrompt} from './recipe-guidance.js';
+import {peopleForRecipe,createShoppingList,shoppingRecipeKey,shoppingProgress,shoppingQuantity,shoppingText} from './shopping.js';
 
 let activeTheme = applyTheme(loadTheme().id);
 
 const app = document.querySelector('#app'), modal = document.querySelector('#modal');
 const esc = s => String(s ?? '').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons = {
+  basket:'<path d="m8 3-4 7m12-7 4 7M3 10h18l-2 11H5zM9 14v3m6-3v3"/>',
   palette:'<circle cx="12" cy="12" r="9"/><path d="M13 21c-2-3 5-4 3-7-1-2-4 1-5-1s3-5 1-10"/><path d="M7 8h.01M6 13h.01M9 17h.01"/>',
   book:'<path d="M4 4h6a3 3 0 0 1 3 3v13a4 4 0 0 0-4-3H4z"/><path d="M13 7a3 3 0 0 1 3-3h5v13h-4a4 4 0 0 0-4 3"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -25,6 +27,7 @@ const icons = {
 const icon = name => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.pot}</svg>`;
 const button = (label,action,attrs='',style='secondary',symbol='') => `<button class="btn ${style}" data-action="${action}" ${attrs}>${symbol ? icon(symbol) : ''}${label}</button>`;
 let pendingLibrary=null;
+let shoppingLists=[],shopping=null,shoppingMode='yield',shoppingRemaining=false,shoppingSettingsOpen=false,shoppingSaved=true;
 let batchName = '', idleTimerPanelOpen = false, actionQueue = Promise.resolve();
 let library = [], session = null, selected = null, view = 'library', search = '', target = 1, units = 'original', pending = null, importing = false;
 let wakeLock = null, wakeStatus = 'Screen wake not active', audio = null, audioReady = false, storageError = '', sessionSaved = true, sessionSaveRevision = 0;
@@ -55,6 +58,48 @@ const GUIDE_URL = 'https://cookstep-recipe-guide.alightslug4.chatgpt.site';
 function toast(message) { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('show'); clearTimeout(toast.timeout); toast.timeout = setTimeout(() => el.classList.remove('show'),4200); }
 function storageFailure(e) { storageError = `Could not save on this device: ${e.message || 'storage unavailable'}. Free browser space and retry; keep this tab open until saved.`; render(); }
 async function saveSession() { if (!session) return; const revision=++sessionSaveRevision;sessionSaved=false;try { await write('sessions',session); if(revision===sessionSaveRevision)sessionSaved = true; } catch(e) { sessionSaved = false; storageFailure(e); } }
+async function saveShopping() {
+  if(!shopping)return;
+  shoppingSaved=false;shopping.updatedAt=Date.now();
+  shoppingLists=shoppingLists.filter(l=>l.id!==shopping.id).concat(shopping);
+  try{await write('shopping',shopping);shoppingSaved=true;updateShoppingStatus();}catch(e){storageFailure(e);}
+}
+async function openShopping(record,resume=false) {
+  const previous=shoppingLists.find(l=>l.id===record.id);
+  const changed=previous&&shoppingRecipeKey(previous.recipe)!==shoppingRecipeKey(record.recipe);
+  const nextTarget=resume&&previous?previous.target:target;
+  const nextUnits=resume&&previous?previous.units:units;
+  shopping=previous&&!changed?{...previous,recipe:structuredClone(record.recipe),units:nextUnits}:createShoppingList(record.recipe,nextTarget,nextUnits);
+  const resized=shopping.target!==nextTarget;
+  if(resized){shopping.target=nextTarget;shopping.checked=[];}
+  shoppingMode=peopleForRecipe(shopping.recipe)?'people':'yield';shoppingRemaining=false;shoppingSettingsOpen=false;
+  await releaseWake();view='shopping';await saveShopping();render();window.scrollTo(0,0);
+  if(changed||resized)toast(changed?'Recipe ingredients changed. Purchase checks were cleared for the updated list.':'Amounts changed. Purchase checks were cleared for this shopping trip.');
+}
+function shoppingSummary(list) {
+  const p=shoppingProgress(list),people=peopleForRecipe(list.recipe),factor=list.target/list.recipe.yield.quantity;
+  return `${number(list.target)} ${esc(list.recipe.yield.unit)}${people?` · ${number(people*factor)} people`:''} · ${p.done}/${p.total} essentials checked`;
+}
+function savedShoppingHtml() {
+  return shoppingLists.length?`<section class="saved-shopping panel" aria-label="Saved shopping lists"><div class="section-heading"><h2>${icon('basket')} Shopping lists</h2><span class="muted small">Saved on this device</span></div>${shoppingLists.slice().sort((a,b)=>b.updatedAt-a.updatedAt).map(l=>`<button class="saved-shopping-link" data-action="resume-shopping" data-id="${esc(l.id)}"><span><strong>${esc(l.recipe.title)}</strong><small>${shoppingSummary(l)}</small></span>${icon('arrow')}</button>`).join('')}</section>`:'';
+}
+function shoppingStatusText() {
+  const p=shoppingProgress(shopping);
+  return `${p.done} of ${p.total} essentials checked${p.optional?` · ${p.optional} optional checked`:''}${p.total&&p.done===p.total?' · Everything essential is covered':''} · ${shoppingSaved?'Saved on this device':'Saving…'}`;
+}
+function updateShoppingStatus() {const el=document.querySelector('#shopping-status');if(el&&shopping)el.textContent=shoppingStatusText();}
+function shoppingScreen() {
+  const r=shopping.recipe,factor=shopping.target/r.yield.quantity,people=peopleForRecipe(r);
+  const groups=[{id:undefined,title:r.components?.length?'Main & shared ingredients':'Ingredients'},...(r.components||[])];
+  const value=shoppingMode==='people'?people*factor:shopping.target;
+  return `<main class="shopping-page"><div class="overview-toolbar"><button class="back-link" data-action="shopping-back">${icon('left')} Back to recipe</button>${button('Copy list','copy-shopping','','secondary','book')}</div><div class="shopping-heading"><div class="eyebrow">READY FOR THE SUPERMARKET</div><h1>Shopping list</h1><h2>${esc(r.title)}</h2><p class="muted">Check off what’s in your basket or already at home.</p></div><details class="panel shopping-settings-panel" ${shoppingSettingsOpen?'open':''}><summary><span>${people?`For ${number(people*factor)} people · `:''}${number(shopping.target)} ${esc(r.yield.unit)}</span><span>Adjust amounts ${icon('chevron')}</span></summary><div class="shopping-settings"><div><label class="field-label" for="shopping-mode">Plan by</label><select id="shopping-mode"><option value="yield" ${shoppingMode==='yield'?'selected':''}>Recipe yield (${esc(r.yield.unit)})</option>${people?`<option value="people" ${shoppingMode==='people'?'selected':''}>People / servings</option>`:''}</select></div><div><label class="field-label" for="shopping-target">${shoppingMode==='people'?'How many people?':`How many ${esc(r.yield.unit)}?`}</label><input id="shopping-target" type="number" min="0.01" step="any" value="${value}" inputmode="decimal"></div><div><label class="field-label" for="shopping-units">Measurements</label><select id="shopping-units">${[['original','As written'],['metric','Metric'],['imperial','Imperial (US volume)']].map(([id,label])=>`<option value="${id}" ${shopping.units===id?'selected':''}>${label}</option>`).join('')}</select></div><p class="muted small">${number(shopping.target)} ${esc(r.yield.unit)}${people?` · ${number(people*factor)} people`:' · People per recipe are not specified; choose the recipe yield.'}<br>Changing amounts clears purchase checks. Ingredient sizes and notes are shown below.</p></div></details><section class="shopping-progress panel"><p id="shopping-status" role="status" aria-live="polite">${esc(shoppingStatusText())}</p><div class="button-row">${button(shoppingRemaining?'Show all items':'Show remaining','shopping-filter',`aria-pressed="${shoppingRemaining}"`,'secondary')}</div></section><div class="shopping-groups">${groups.map(g=>{
+    const items=r.ingredients.filter(i=>i.componentId===g.id&&(!shoppingRemaining||!shopping.checked.includes(i.id)));
+    return items.length?`<section class="panel ingredient-group"><h3>${esc(g.title)}</h3>${items.map(i=>{
+      const q=shoppingQuantity(i,factor,shopping.units),checked=shopping.checked.includes(i.id);
+      return `<label class="shopping-item ${checked?'purchased':''}"><input type="checkbox" data-shopping-check="${esc(i.id)}" ${checked?'checked':''}><span class="shopping-item-name"><strong>${esc(i.name)}</strong>${i.optional?'<span class="optional">Optional</span>':''}${i.notes?`<small>${esc(i.notes)}</small>`:''}</span><span class="amount"><strong>${esc(q.text)}</strong>${q.notes.map(n=>`<small class="quantity-note">${esc(n)}</small>`).join('')}</span></label>`;
+    }).join('')}</section>`:'';
+  }).join('')||`<p class="notice">${r.ingredients.length?'All items are checked. Show all items to review your list.':'No ingredients specified in this recipe.'}</p>`}</div><div class="button-row shopping-footer-actions">${button('Reset checks','reset-shopping',shopping.checked.length?'':'disabled','secondary')}${button('Remove list','remove-shopping','','secondary','trash')}</div><p class="muted small shopping-footnote">Purchase checks are separate from cooking preparation. This list is saved on this device; copy it to share.</p></main>`;
+}
 function image(record,id,cover=false) {
   const im = record.recipe.images?.find(i => i.id === id), blob = record.assets?.[id];
   if (!im || !blob) return '';
@@ -92,7 +137,7 @@ function libraryScreen() {
   const filtered = library.filter(r => r.recipe.title.toLowerCase().includes(search.toLowerCase()));
   return `<main class="library-page"><section class="page-heading"><div><div class="eyebrow">YOUR PERSONAL RECIPE BOOK</div><h1>Good food.<br><span>A clearer head.</span></h1><p>Keep your recipes together. Take cooking one step at a time.</p></div><div class="library-art">${heroRecipe?`<div class="library-photo">${image(heroRecipe,heroRecipe.recipe.coverImageId,true)}</div>`:''}${botanical()}${cozyArt()}</div></section>
   ${session ? `<section class="resume-banner"><span class="resume-icon">${icon('pot')}</span><div><strong>Your kitchen is still open</strong><p>${esc(session.record.recipe.title)} · ${session.timers.filter(t => !t.stoppedAt).length} active timers</p></div>${button('Resume cooking','resume','','dark','arrow')}</section>` : ''}
-  <div class="section-heading"><div class="library-heading"><h2>Your recipes <span class="count">${library.length}</span></h2>${button('','library-options','aria-label="Recipe library options" aria-haspopup="dialog"','quiet-options','more')}</div>${library.length ? `<label class="search">${icon('search')}<input id="search" type="search" placeholder="Find a recipe…" value="${esc(search)}" aria-label="Find a recipe"></label>` : ''}</div>
+  ${savedShoppingHtml()}<div class="section-heading"><div class="library-heading"><h2>Your recipes <span class="count">${library.length}</span></h2>${button('','library-options','aria-label="Recipe library options" aria-haspopup="dialog"','quiet-options','more')}</div>${library.length ? `<label class="search">${icon('search')}<input id="search" type="search" placeholder="Find a recipe…" value="${esc(search)}" aria-label="Find a recipe"></label>` : ''}</div>
   ${library.length ? `<section class="recipe-grid">${filtered.length ? filtered.map(recipeCard).join('') : '<p class="muted">No recipes match your search.</p>'}</section>` : `<section class="empty-library"><div class="empty-copy"><span class="pill">A place for your favourites</span><h2>Your next good meal<br>starts here.</h2><p>Bring a recipe you love. We’ll keep the ingredients, steps and timers within easy reach.</p><div class="button-row">${button('Add with ChatGPT','chatgpt','','primary','leaf')}${button('Try the example','example','','secondary','arrow')}</div><small>Have a recipe link or photo? <a href="${GUIDE_URL}/" target="_blank">Let your AI prepare it ${icon('arrow')}</a></small></div>${illustration()}<div class="empty-theme-art">${botanical()}${cozyArt()}</div></section>`}
   <section class="how-it-works"><div><span class="mini-icon">${icon('upload')}</span><h3>Bring your own recipes</h3><p>Ask ChatGPT to add or update recipes directly.</p></div><div><span class="mini-icon">${icon('grid')}</span><h3>One meal, a few moving parts</h3><p>Switch between the main dish and sides. Each remembers your place.</p></div><div><span class="mini-icon">${icon('clock')}</span><h3>A timer for every pan</h3><p>Start when you’re ready. Keep every cooking time in sight.</p></div></section><footer><span>Made for a quieter kind of cooking.</span><a href="${GUIDE_URL}/">Recipe preparation guide ${icon('arrow')}</a></footer></main>`;
 }
@@ -119,7 +164,7 @@ function overviewScreen(record,isImport=false) {
   ${isImport ? '<div class="notice">Package validated. Review the ingredients, steps, images and timer suggestions before saving.</div>' : ''}
   <div class="overview-grid"><div><section class="panel"><div class="section-heading"><h2>On the counter</h2><span class="pill">${r.ingredients.length} ingredients</span></div>${ingredientsHtml(record,factor,system)}</section><details class="panel steps-details" ${isImport ? 'open' : ''}><summary>Read through the steps <span>${r.steps.length} steps ${icon('chevron')}</span></summary>${stepsHtml(record,factor,system)}</details>${r.notes?.length ? `<section class="panel notes"><h2>Recipe notes</h2>${r.notes.map(n=>`<p>${esc(n)}</p>`).join('')}</section>` : ''}${r.sources?.length ? `<details class="panel"><summary>Sources & original text</summary>${sourceHtml(r)}</details>` : ''}</div>
   <aside class="prep-sidebar"><section class="panel yield-panel"><h2>${isImport ? 'Recipe yield' : 'Make it your own'}</h2>${isImport ? `<p class="yield-value">${yieldLabel(r)}</p>` : `<label class="field-label" for="target">How many ${esc(r.yield.unit)}?</label><div class="yield-control">${button('−','yield-minus','aria-label="Decrease yield"','icon-button')}<input id="target" type="number" min="0.01" max="100000" step="any" value="${target}" inputmode="decimal">${button('+','yield-plus','aria-label="Increase yield"','icon-button')}</div><p class="muted small">Original recipe: ${yieldLabel(r)}${r.servings && r.yield.unit !== 'servings' ? ` · ${r.servings} people` : ''}</p><label class="field-label" for="units">Display measurements</label><select id="units"><option value="original" ${units==='original'?'selected':''}>As written</option><option value="metric" ${units==='metric'?'selected':''}>Metric</option><option value="imperial" ${units==='imperial'?'selected':''}>Imperial (US volume)</option></select><p class="muted small">Amounts scale. Cooking times stay the same.<br>Keep batch sizes and doneness cues in mind.</p>`}
-  ${isImport ? `<div class="button-stack">${library.some(x=>x.id===record.id) ? `<p class="notice">This recipe ID is already saved. Choose how to save it.</p>${button('Replace saved recipe','save-replace','','primary','check')}${button('Save a separate copy','save-copy')}` : button('Save to my recipes','save-import','','primary','check')}${button('Cancel import','cancel-import')}</div>` : button(session ? 'Resume current meal' : 'Start cooking','start','','primary full','arrow')+`<div class="button-stack">${button('Edit with ChatGPT','chatgpt','','secondary','leaf')}</div>`}${session && !isImport ? '<p class="muted small">Finish the current session to start another meal.</p>' : ''}</section>
+  ${isImport ? `<div class="button-stack">${library.some(x=>x.id===record.id) ? `<p class="notice">This recipe ID is already saved. Choose how to save it.</p>${button('Replace saved recipe','save-replace','','primary','check')}${button('Save a separate copy','save-copy')}` : button('Save to my recipes','save-import','','primary','check')}${button('Cancel import','cancel-import')}</div>` : button(session ? 'Resume current meal' : 'Start cooking','start','','primary full','arrow')+button('Shopping list','shopping','','secondary full shopping-create','basket')+`<div class="button-stack">${button('Edit with ChatGPT','chatgpt','','secondary','leaf')}</div>`}${session && !isImport ? '<p class="muted small">Finish the current session to start another meal.</p>' : ''}</section>
   ${r.equipment?.length ? `<section class="panel"><h2>You’ll need</h2><ul class="equipment">${r.equipment.map(e=>`<li>${icon('check')}${esc(e)}</li>`).join('')}</ul></section>` : ''}
   ${r.components?.length ? `<section class="panel"><h2>Parts of the meal</h2><p class="muted small">Open each task when it suits you.</p>${r.components.map(c=>`<div class="component-preview">${icon('pot')}<div><strong>${esc(c.title)}</strong>${c.description?`<small>${esc(c.description)}</small>`:''}<small>${taskSteps(r,c.id).length} steps</small></div></div>`).join('')}</section>` : ''}</aside></div></main>`;
 }
@@ -189,8 +234,8 @@ function cookingScreen() {
 }
 function render() {
   const focus=document.activeElement?.id, caret=document.activeElement?.selectionStart;
-  app.innerHTML=(view==='cooking'&&session?'':header())+(storageError?`<div class="storage-error" role="alert">${esc(storageError)} ${button('Retry saving','retry-save','','secondary')}</div>`:'')+(view==='cooking'&&session?cookingScreen():view==='overview'&&selected?overviewScreen(selected):view==='import'&&pending?overviewScreen(pending,true):libraryScreen());
-  if (focus && ['search','target','batch-name'].includes(focus)) { const el=document.getElementById(focus); if(el){el.focus();if(el.type==='search')el.setSelectionRange(caret,caret);} }
+  app.innerHTML=(view==='cooking'&&session?'':header())+(storageError?`<div class="storage-error" role="alert">${esc(storageError)} ${button('Retry saving','retry-save','','secondary')}</div>`:'')+(view==='cooking'&&session?cookingScreen():view==='shopping'&&shopping?shoppingScreen():view==='overview'&&selected?overviewScreen(selected):view==='import'&&pending?overviewScreen(pending,true):libraryScreen());
+  if (focus && ['search','target','batch-name','shopping-target','shopping-mode','shopping-units'].includes(focus)) { const el=document.getElementById(focus); if(el){el.focus();if(el.type==='search')el.setSelectionRange(caret,caret);} }
   if(modal.open && modal.dataset.timers) modal.querySelector(".drawer-timers").innerHTML=timerCards();
   updateTimers();
 }
@@ -266,6 +311,13 @@ function libraryImportPreview(){
 async function importFile(file){if(!file||importing)return;importing=true;toast('Checking your recipe package…');try{const records=await importRecipes(file);if(records.length>1){pendingLibrary=records;libraryImportPreview();return;}pending=records[0];view='import';await releaseWake();render();window.scrollTo(0,0);}catch(e){showModal(`<div class="eyebrow">PACKAGE NEEDS A LITTLE WORK</div><h2>Couldn’t import this recipe</h2><p>${esc(e.message)}</p>${e.details?`<ul class="validation-errors">${e.details.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}<p class="muted">Correct the package with your AI preparer, then try again. Nothing has been saved.</p>${button('Choose another file','import','','primary','upload')}`);}finally{importing=false;document.querySelector('#file-input').value='';}}
 async function handleAction(el){
   const action=el.dataset.action,id=el.dataset.id;
+  if(action==='shopping'){await openShopping(selected);return;}
+  if(action==='resume-shopping'){const list=shoppingLists.find(l=>l.id===id);if(list)await openShopping(library.find(r=>r.id===id)||{id,recipe:list.recipe},true);return;}
+  if(action==='shopping-back'){selected=library.find(r=>r.id===shopping.id);if(selected){target=shopping.target;units=shopping.units;view='overview';}else view='library';render();window.scrollTo(0,0);return;}
+  if(action==='shopping-filter'){shoppingRemaining=!shoppingRemaining;render();return;}
+  if(action==='reset-shopping'){shopping.checked=[];await saveShopping();render();return;}
+  if(action==='remove-shopping'){await write('shopping',shopping.id);shoppingLists=shoppingLists.filter(l=>l.id!==shopping.id);shopping=null;view='library';render();return;}
+  if(action==='copy-shopping'){const text=shoppingText(shopping);try{await navigator.clipboard.writeText(text);toast('Shopping list copied, with quantities and purchase checks.');}catch{showModal(`<h2>Copy shopping list</h2><textarea rows="14" readonly aria-label="Shopping list text">${esc(text)}</textarea>`);}return;}
   if(action==='chatgpt'){chatGPTSettings();return;}
   if(action==='export-library'||action==='export-recipe'){if(modal.open)modal.close();await downloadRecipes(action==='export-library'?library:[selected],action==='export-library');return;}
   if(action==='save-library'||action==='copy-library'){let records=pendingLibrary;if(!records)return;if(action==='copy-library')records=records.map(record=>{if(!library.some(r=>r.id===record.id))return record;const id=crypto.randomUUID();return {...record,id,recipe:{...record.recipe,id}};});await changeRecipes(records);pendingLibrary=null;library=await read('recipes');view='library';modal.close();render();toast('Library saved. Syncing recipes…');void cloud.sync();return;}
@@ -306,7 +358,7 @@ async function handleAction(el){
   if(action==='finish'){const running=session.timers.filter(t=>!t.stoppedAt).length;showModal(`<div class="finish-icon">${icon('leaf')}</div><h2>Ready to call it a meal?</h2><p>${running?`${running} timer${running>1?'s are':' is'} still running. Finishing will stop all timers and clear this session.`:'Your recipe will stay in your library for next time.'}</p><div class="button-row">${button('Finish cooking','confirm-finish','','primary','check')}${button('Keep cooking','close-modal')}</div>`);return;}
   if(action==='confirm-finish'){await write('sessions','active');session=null;modal.close();await releaseWake();view='library';render();toast('Kitchen closed. Enjoy your meal.');return;}
 }
-async function databaseRetry(){try{if(session)await write('sessions',session);if(pending)toast('Storage available. Save the import when ready.');library=await read('recipes');storageError='';sessionSaved=true;render();}catch(e){storageFailure(e);}}
+async function databaseRetry(){try{if(shopping)await saveShopping();if(!shoppingSaved)return;if(session)await write('sessions',session);if(pending)toast('Storage available. Save the import when ready.');library=await read('recipes');storageError='';sessionSaved=true;render();}catch(e){storageFailure(e);}}
 function enqueue(fn){actionQueue=actionQueue.then(fn).catch(e=>{if(e.name==='QuotaExceededError'||e.name==='UnknownError')storageFailure(e);else toast(e.message||'Something went wrong. Please try again.');});}
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(el&&!el.disabled){if(el.dataset.action==='fullscreen'){toggleFullscreen();return;}if(['start','resume','sound','start-timer'].includes(el.dataset.action))activateAudio();enqueue(()=>handleAction(el));}});
 document.addEventListener('pointerover',e=>{const control=e.target.closest('.sync-control');if(control){control.dataset.pointer=e.pointerType;if(e.pointerType==='mouse'){delete control.dataset.dismissed;control.open=true;}}});
@@ -318,6 +370,18 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){const control=docum
 document.addEventListener('fullscreenchange',updateFullscreenButton);
 document.addEventListener('webkitfullscreenchange',updateFullscreenButton);
 document.addEventListener('change',e=>{
+  if(e.target.matches('[data-shopping-check]')&&shopping){
+    const id=e.target.dataset.shoppingCheck,checked=e.target.checked;
+    enqueue(async()=>{shopping.checked=shopping.checked.filter(k=>k!==id);if(checked)shopping.checked.push(id);await saveShopping();
+      if(shoppingRemaining)render();else{document.querySelectorAll('[data-shopping-check]').forEach(input=>{input.checked=shopping.checked.includes(input.dataset.shoppingCheck);input.closest('.shopping-item').classList.toggle('purchased',input.checked);});const reset=document.querySelector('[data-action="reset-shopping"]');if(reset)reset.disabled=!shopping.checked.length;}});
+  }
+  if(e.target.id==='shopping-mode'&&shopping){shoppingMode=e.target.value;render();}
+  if(e.target.id==='shopping-target'&&shopping){const value=Number(e.target.value);enqueue(async()=>{
+    const n=shoppingMode==='people'?value*shopping.recipe.yield.quantity/peopleForRecipe(shopping.recipe):value;
+    if(value>=.01&&Number.isFinite(n)&&n>=.01&&n<=100000){const changed=Math.abs(n-shopping.target)>1e-9;if(changed){shopping.target=n;shopping.checked=[];await saveShopping();toast('Amounts updated. Purchase checks cleared.');}render();}
+    else{toast('Choose a positive amount with a recipe yield between 0.01 and 100,000.');render();}
+  });}
+  if(e.target.id==='shopping-units'&&shopping){const value=e.target.value;enqueue(async()=>{shopping.units=value;await saveShopping();render();});}
   if(e.target.matches('input[name="theme"]')){
     activeTheme=applyTheme(e.target.value);
     const saved=saveTheme(activeTheme.id);
@@ -338,15 +402,15 @@ document.addEventListener('keydown',e=>{
   e.preventDefault();
   enqueue(async()=>{if(view==='cooking'&&session&&!modal.open)await browseStep(e.key==='ArrowLeft'?-1:1);});
 });
-document.addEventListener('toggle',e=>{if(e.target.matches('.timer-panel')&&!session?.timers.some(t=>!t.stoppedAt))idleTimerPanelOpen=e.target.open;},true);
+document.addEventListener('toggle',e=>{if(e.target.matches('.shopping-settings-panel'))shoppingSettingsOpen=e.target.open;if(e.target.matches('.timer-panel')&&!session?.timers.some(t=>!t.stoppedAt))idleTimerPanelOpen=e.target.open;},true);
 document.addEventListener('change',e=>{if(e.target.id==='file-input'){const file=e.target.files[0];enqueue(()=>importFile(file));}if(e.target.id==='target'){const n=Number(e.target.value);if(n>0&&n<=100000){target=n;render();}else{toast('Choose a yield between 0.01 and 100,000.');e.target.value=target;}}if(e.target.id==='units'){units=e.target.value;render();}if(e.target.id==='timer-mode'){const elapsed=e.target.value==='elapsed';document.querySelector('#duration-field').hidden=elapsed;document.querySelector('#timer-minutes').required=!elapsed;}});
 document.addEventListener('input',e=>{if(e.target.id==='batch-name')batchName=e.target.value;if(e.target.id==='search'){search=e.target.value;render();}});
 document.addEventListener('submit',async e=>{if(e.target.id!=='manual-form')return;e.preventDefault();const fields=new FormData(e.target),mode=fields.get('mode'),durationSeconds=Math.round(Number(fields.get('minutes'))*60);if(mode==='countdown'&&(!Number.isSafeInteger(durationSeconds)||durationSeconds<1)){toast('Choose a countdown of at least one second.');return;}await activateAudio();const t={id:'manual',label:fields.get('label').trim(),mode,...(mode==='countdown'?{durationSeconds}:{})};session.timers.push(startTimer(session,t,currentStep(),Date.now(),fields.get('batch')));await saveSession();modal.close();render();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){updateTimers();if(view==='cooking')requestWake();}else releaseWake();});
 window.addEventListener('pagehide',()=>{if(session)saveSession();});
-window.addEventListener('beforeunload',e=>{if(!sessionSaved){e.preventDefault();e.returnValue='';}});
+window.addEventListener('beforeunload',e=>{if(!sessionSaved||!shoppingSaved){e.preventDefault();e.returnValue='';}});
 setInterval(updateTimers,500);
-async function init(){try{library=await read('recipes');session=await read('sessions','active')||null;}catch(e){storageError=`Browser storage is unavailable: ${e.message}. Enable storage for this site to keep recipes and cooking progress.`;}render();void cloud.sync();}
+async function init(){try{library=await read('recipes');session=await read('sessions','active')||null;shoppingLists=await read('shopping');}catch(e){storageError=`Browser storage is unavailable: ${e.message}. Enable storage for this site to keep recipes and cooking progress.`;}render();void cloud.sync();}
 window.addEventListener('online',()=>void cloud.sync());
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void cloud.sync();});
 setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)void cloud.sync();},60000);

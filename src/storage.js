@@ -3,8 +3,8 @@ let db;
 export async function database() {
   if (db) return db;
   db = await new Promise((resolve,reject) => {
-    const request = indexedDB.open('cookstep',2);
-    request.onupgradeneeded = () => { for(const name of ['recipes','sessions','sync']) if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:'id'}); };
+    const request = indexedDB.open('cookstep',3);
+    request.onupgradeneeded = () => { for(const name of ['recipes','sessions','sync','shopping']) if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:'id'}); };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
     request.onblocked = () => reject(new Error('Close other Cookstep tabs and try again.'));

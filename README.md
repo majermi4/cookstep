@@ -33,6 +33,7 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 - Duplicate-ID replacement or independent copy; existing cooking sessions retain a recipe snapshot.
 - Synced recipe library and images, local caching, durable upload retries, conflict copies, synced deletions, grouped ingredients, equipment, source attribution and original text.
 - Target yield selection, numeric and range scaling, original/metric/imperial display and Celsius/Fahrenheit conversion. Ambiguous units and qualitative amounts are identified rather than guessed.
+- Recipe shopping lists with people/yield scaling, size notes, whole-item purchase hints, optional items, remaining-item filtering, copyable lists and device-local saved purchase checks. Open **Shopping list** in a recipe; resume it from the library. Changing amounts or recipe ingredients clears checks.
 - Main guide and component tasks with independent progress and optional task suggestions.
 - Previous/Next buttons and left/right keyboard arrows browse steps without completing them; completion stays explicit.
 - The timer panel collapses when idle and opens automatically when a timer starts.
@@ -53,7 +54,7 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 
 Import once, wait for “Recipes synced across devices”, and open the same private Site while signed into the same account on other devices. Existing recipes on this origin migrate automatically; use Sync now or Retry sync to refresh. Library syncing runs on launch, reconnection, return to the tab and every minute while visible. Simultaneous replacements preserve a separate copy instead of overwriting another device’s edits.
 
-No recipe extraction, in-app recipe editing, offline-loading guarantee or background/lock-screen notifications. Cooking sessions and timers remain device-local. Changing yield is locked during cooking. Source instruction prose remains unchanged; scalable quantities and convertible temperatures use structured fields.
+No recipe extraction, in-app recipe editing, offline-loading guarantee or background/lock-screen notifications. Shopping lists, cooking sessions and timers remain device-local. Changing yield is locked during cooking. Source instruction prose remains unchanged; scalable quantities and convertible temperatures use structured fields.
 
 Actual iPad Chrome and Brave screen-awake, foreground sound and storage recovery require device acceptance. Desktop Chromium and responsive viewport tests do not establish iPad browser behavior. The app explicitly reports when screen wake or sound is unavailable. Browser storage can be cleared or evicted; retain original recipe packages for re-import.
 
