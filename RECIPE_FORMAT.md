@@ -134,7 +134,7 @@ Each image requires `id`, `path`, `alt`, `kind`, and `origin`:
 - `kind`: `photo` or `illustration`.
 - `origin`: `recipe_source`, `user_supplied`, or `ai_generated`.
 - `sourceUrl` is optional. Legacy `caption` is accepted but not displayed; omit it in new packages.
-- Record generated images with `origin: "ai_generated"` and descriptive `alt` text. Cookstep shows no caption overlays; keep attribution and provenance in metadata. The external AI preparer supplies useful illustrations when source step photos are missing; the app displays supplied assets and does not generate images.
+- Record generated images with `origin: "ai_generated"` and descriptive `alt` text. Cookstep shows no caption overlays; keep attribution and provenance in metadata. The external AI preparer generates a dedicated illustration for every step without a relevant source image, uploads/bundles its actual bytes and sets `kind: "illustration"` and `origin: "ai_generated"`. If image generation is unavailable or fails, disclose the uncovered steps. The app displays supplied assets and does not itself generate images.
 - Missing images do not invalidate a recipe. Referenced files must exist; never substitute nonexistent files or unlabeled placeholders.
 - Associate a photo with a step only when it clearly depicts that step. Use `coverImageId` for a finished-dish photo.
 
@@ -158,7 +158,7 @@ Draft 0.1 files require explicit migration or re-preparation; do not silently re
 - Group useful parallel activities as components, with main-guide suggestions where appropriate. Do not force unrelated dishes into one global sequence.
 - Put quantities used by each step in `ingredientUses` when known.
 - Attach countdown or elapsed timer templates to the steps where activities start, with explicit user start actions; do not invent cooking durations or silently replace ranges with one number.
-- Bundle available, relevant images and record their origin. Do not substitute a finished-dish image for a missing step image.
+- Bundle available, relevant source images and generate a dedicated illustration for each uncovered step. Record generated assets as `kind: "illustration"`, `origin: "ai_generated"`. Do not substitute a finished-dish image for a missing step image; disclose any failed or unavailable generation.
 - Record unresolved source ambiguity briefly in recipe-level `notes` rather than making an unsupported correction. Omit step notes and image captions.
 - Do not include app session state, executable content, or embedded credentials.
 
