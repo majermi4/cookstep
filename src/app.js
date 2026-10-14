@@ -46,12 +46,21 @@ let library = [], session = null, selected = null, view = 'library', search = ''
 let wakeLock = null, wakeStatus = 'Screen wake not active', audio = null, audioReady = false, storageError = '', sessionSaved = true, sessionSaveRevision = 0;
 const sounded = new Set(), imageUrls = new WeakMap();
 let syncStatus={state:'syncing',message:'Loading synced recipes…'};
+function attachTranslations(record){
+  const latest=library.find(r=>r.id===record?.recipe?.id);
+  if(latest?.recipe.translations&&!record.recipe.translations&&JSON.stringify(recipeText(record.recipe))===JSON.stringify(recipeText(latest.recipe))){
+    record.recipe={...record.recipe,translations:latest.recipe.translations};return true;
+  }
+  return false;
+}
+async function enrichSnapshots(){
+  if(session&&attachTranslations(session.record))await saveSession();
+  for(const list of shoppingLists)if(attachTranslations(list))await write('shopping',list);
+  if(shopping)attachTranslations(shopping);
+}
 const cloud=createLibrarySync({
   changed:async()=>{const next=await read('recipes');const differs=JSON.stringify(next.map(r=>[r.id,r.cloudRevision,r.savedAt]))!==JSON.stringify(library.map(r=>[r.id,r.cloudRevision,r.savedAt]));library=next;if(!differs)return;
-    const enrich=record=>{const latest=library.find(r=>r.id===record?.recipe?.id);if(latest?.recipe.translations&&!record.recipe.translations&&JSON.stringify(recipeText(record.recipe))===JSON.stringify(recipeText(latest.recipe))){record.recipe={...record.recipe,translations:latest.recipe.translations};return true;}return false;};
-    if(session&&enrich(session.record))void saveSession();
-    for(const list of shoppingLists)if(enrich(list))void write('shopping',list);
-    if(shopping)enrich(shopping);
+    await enrichSnapshots();
 if(view==='overview'&&selected){const latest=library.find(r=>r.id===selected.id);if(latest)selected=latest;else{selected=null;view='library';}}render();},
   status:value=>{syncStatus=value;updateSyncStatus();},
   notice:message=>toast(message),
@@ -436,7 +445,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('pagehide',()=>{if(session)saveSession();});
 window.addEventListener('beforeunload',e=>{if(!sessionSaved||!shoppingSaved){e.preventDefault();e.returnValue='';}});
 setInterval(updateTimers,500);
-async function init(){try{library=await read('recipes');session=await read('sessions','active')||null;shoppingLists=await read('shopping');}catch(e){storageError=ui`Browser storage is unavailable: ${e.message}. Enable storage for this site to keep recipes and cooking progress.`;}render();void cloud.sync();}
+async function init(){try{library=await read('recipes');session=await read('sessions','active')||null;shoppingLists=await read('shopping');await enrichSnapshots();}catch(e){storageError=ui`Browser storage is unavailable: ${e.message}. Enable storage for this site to keep recipes and cooking progress.`;}render();void cloud.sync();}
 window.addEventListener('online',()=>void cloud.sync());
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void cloud.sync();});
 setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)void cloud.sync();},60000);

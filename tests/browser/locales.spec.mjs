@@ -35,3 +35,9 @@ test('switching inside dialogs translates controls and preserves manual timer in
  await page.locator('#manual-form [type="submit"]').click();await expect(page.locator('.timer-card-heading')).toContainText('My custom rice');const before=await snapshot(page);
  await page.locator('[data-action="cooking-menu"]').click();await page.locator('#modal [data-locale]').selectOption('es');await expect(page.locator('#modal h2')).toHaveText('Opciones de cocina');expect((await snapshot(page)).session).toEqual(before.session);
 });
+
+test('cached translations also enrich matching older session and shopping snapshots on launch',async({page})=>{
+ await page.goto('/');await page.locator('[data-action="example"]').click();await page.locator('[data-action="save-import"]').click();await page.locator('[data-action="shopping"]').click();await page.locator('[data-shopping-check="pasta"]').check();await page.locator('[data-action="shopping-back"]').click();await page.locator('[data-action="start"]').click();
+ const before=await page.evaluate(async()=>{const{read,write}=await import('/storage.js');const session=await read('sessions','active'),list=(await read('shopping'))[0];delete session.record.recipe.translations;delete list.recipe.translations;await write('sessions',session);await write('shopping',list);return {session,list};});
+ await page.reload();await choose(page,'cs');await page.locator('[data-action="resume"]').click();await expect(page.locator('.current-step h2')).toHaveText('Připrav omáčku a těstoviny');const after=await snapshot(page);expect(after.session.completed).toEqual(before.session.completed);expect(after.session.positions).toEqual(before.session.positions);expect(after.session.timers).toEqual(before.session.timers);expect(after.shopping[0].checked).toEqual(before.list.checked);expect(Object.keys(after.session.record.recipe.translations)).toEqual(['en','es','cs']);
+});
