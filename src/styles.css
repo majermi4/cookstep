@@ -56,7 +56,7 @@
 .button-row{display:flex;gap:var(--space-10);flex-wrap:wrap}
 .button-stack{display:flex;flex-direction:column;gap:var(--space-10)}
 .section-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--space-15);margin-bottom:var(--space-21)}
-.section-heading h2{font-size:var(--text-21);display:flex;align-items:center;gap:var(--space-10)}
+.section-heading h2,.library-heading h1{font-size:var(--text-21);display:flex;align-items:center;gap:var(--space-10)}
 .count{border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:var(--text-12);font-weight:500;min-width:26px;padding:var(--space-4);text-align:center}
 .empty-library{background:var(--feature-bg);border:1px solid var(--line);border-radius:var(--radius-xl);min-height:365px;display:grid;grid-template-columns:1.25fr 1fr;overflow:hidden}
 .empty-copy{padding:var(--space-38) var(--space-40);z-index:1}
@@ -403,7 +403,7 @@ dialog details{margin:var(--space-19) 0}#toast{position:fixed;bottom:28px;left:5
 .resume-banner .btn{font-size:var(--text-11);padding:var(--space-10)}
 .resume-banner .btn svg{display:none}
 .resume-icon{display:none}
-.section-heading h2{font-size:var(--text-19)}footer{font-size:var(--text-10)}
+.section-heading h2,.library-heading h1{font-size:var(--text-19)}footer{font-size:var(--text-10)}
 .guide-page{padding:var(--space-30) var(--space-22)}
 .guide-page>h1{font-size:var(--text-34)}
 .guide-page p,.guide-page li{font-size:var(--text-13)}}
@@ -590,7 +590,7 @@ dialog .cooking-menu-actions .btn{justify-content:flex-start;min-height:48px}
 @media(max-width:600px){.library-page>.section-heading{flex-wrap:wrap}.library-page>.section-heading .search{width:100%}}
 
 .library-heading{display:flex;align-items:center;gap:8px;min-width:0;}
-.library-heading h2{margin:0;}
+.library-heading h1{margin:0;letter-spacing:-.7px;}
 .quiet-options{display:inline-flex;align-items:center;justify-content:center;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--text-muted);border-radius:var(--radius-control);}
 .quiet-options:hover{background:var(--hover);color:var(--text);}
 .overview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;}
