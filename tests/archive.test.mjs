@@ -4,6 +4,8 @@ import {readFile} from 'node:fs/promises';
 import {zipSync,strToU8} from 'fflate';
 import {exportRecipes,importRecipes} from '../public/recipe-archive.js';
 const sample=JSON.parse(await readFile(new URL('../examples/recipe.json',import.meta.url),'utf8'));
+// Legacy fixtures exercise schema mutations independently of translated overlays.
+delete sample.translations;
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jSAAAAABJRU5ErkJggg==','base64');
 const record={id:sample.id,recipe:{...sample,images:[{id:'photo',path:'images/test.png',alt:'Test image',origin:'user_supplied',kind:'photo'}],coverImageId:'photo'},assets:{photo:new Blob([png],{type:'image/png'})}};
 test('recipe and full library ZIPs round trip manifests and actual image bytes',async()=>{

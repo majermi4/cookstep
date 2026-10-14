@@ -2,6 +2,8 @@ import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {zipSync,strToU8} from 'fflate';
 const sample=JSON.parse(await readFile(new URL('../../examples/recipe.json',import.meta.url),'utf8'));
+// Legacy fixtures exercise schema mutations independently of translated overlays.
+delete sample.translations;
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jSAAAAABJRU5ErkJggg==','base64');
 async function signIn(page){await page.goto('/signin-with-chatgpt?return_to=%2F');await expect(page.locator('.sync-control')).toContainText('Recipes synced across devices');}
 async function importRecipe(page,recipe,withImage=false){

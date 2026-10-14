@@ -1,3 +1,5 @@
+import {t,ui,getLocale} from './i18n.js';
+import {localizeRecipe} from './recipe-locales.js';
 import {formatQuantity,number} from './model.js';
 
 export function peopleForRecipe(recipe) {
@@ -22,19 +24,19 @@ export function shoppingQuantity(ingredient,factor,units) {
   const q=ingredient.quantity,result=formatQuantity(q,factor,units);
   const notes=[result.note];
   // Keep source wording: it can specify sizes (e.g. 20 cm tortillas or 400 g tins).
-  if(q?.text&&result.text!==q.text)notes.push(`Original amount: ${q.text}`);
-  if(q?.range)notes.push('Buy enough for the upper end of the range.');
+  if(q?.text&&result.text!==q.text)notes.push(ui`Original amount: ${q.text}`);
+  if(q?.range)notes.push(t('Buy enough for the upper end of the range.'));
   const amount=(q?.range?.max??q?.value)*factor;
   if(wholeUnits.has(q?.unit?.toLowerCase())&&Number.isFinite(amount)&&Math.abs(amount-Math.round(amount))>1e-9)
-    notes.push(`Buy at least ${number(Math.ceil(amount))} ${q.unit}; the recipe uses a partial amount.`);
+    notes.push(ui`Buy at least ${number(Math.ceil(amount))} ${t(q.unit)}; the recipe uses a partial amount.`);
   return {text:result.text,notes:notes.filter(Boolean)};
 }
 
 export function shoppingText(list) {
-  const r=list.recipe,factor=list.target/r.yield.quantity,people=peopleForRecipe(r);
-  return [`${r.title} — shopping list`,`${number(list.target)} ${r.yield.unit}${people?` · ${number(people*factor)} people`:''}`,
+  const r=localizeRecipe(list.recipe,getLocale()),factor=list.target/r.yield.quantity,people=peopleForRecipe(list.recipe);
+  return [ui`${r.title} — shopping list`,`${number(list.target)} ${r.yield.unit}${people?ui` · ${number(people*factor)} people`:''}`,
     ...r.ingredients.map(i=>{
       const q=shoppingQuantity(i,factor,list.units);
-      return `${list.checked.includes(i.id)?'[x]':'[ ]'} ${i.name} — ${q.text}${i.optional?' (optional)':''}${i.notes?` · ${i.notes}`:''}${q.notes.length?` · ${q.notes.join(' · ')}`:''}`;
+      return `${list.checked.includes(i.id)?'[x]':'[ ]'} ${i.name} — ${q.text}${i.optional?t(' (optional)'):''}${i.notes?` · ${i.notes}`:''}${q.notes.length?` · ${q.notes.join(' · ')}`:''}`;
     })].join('\n');
 }

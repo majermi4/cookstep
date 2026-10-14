@@ -3,6 +3,8 @@ import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {zipSync,strToU8} from 'fflate';
 const sample=JSON.parse(await readFile(new URL('../../examples/recipe.json',import.meta.url),'utf8'));
+// Legacy fixtures exercise schema mutations independently of translated overlays.
+delete sample.translations;
 const click=async(page,action)=>{
   if(['library','finish'].includes(action)&&await page.locator('.cooking-page').count()&&!await page.getByRole('dialog').isVisible())await page.getByRole('button',{name:'Cooking options',exact:true}).click();
   return action==='library'?page.getByRole('button',{name:'My recipes',exact:true}).click():page.locator(`[data-action="${action}"]`).click();

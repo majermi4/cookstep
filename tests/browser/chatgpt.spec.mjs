@@ -1,8 +1,11 @@
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 const sample=JSON.parse(await readFile(new URL('../../examples/recipe.json',import.meta.url),'utf8'));
+// Legacy fixtures exercise schema mutations independently of translated overlays.
+delete sample.translations;
+import {recipeText} from '../../src/recipe-locales.js';
 const base64='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jSAAAAABJRU5ErkJggg==';
-async function rpc(page,name,args={}){return page.evaluate(async({name,args})=>{const response=await fetch('/mcp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})});return {status:response.status,data:await response.json()};},{name,args});}
+async function rpc(page,name,args={}){if(name==='save_recipe'&&args.recipe){const text=recipeText(args.recipe);args={...args,recipe:{...args.recipe,translations:{en:text,es:structuredClone(text),cs:structuredClone(text)}}};}return page.evaluate(async({name,args})=>{const response=await fetch('/mcp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})});return {status:response.status,data:await response.json()};},{name,args});}
 test('ChatGPT recipe tools save to the browser library, preserve images and sessions, and reject stale edits',async({page,request})=>{
   const discovery=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'server/discover'}});expect((await discovery.json()).result.supportedVersions).toContain('2026-07-28');
   const list=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'tools/list'}});const tools=(await list.json()).result.tools;expect(tools.map(t=>t.name)).toEqual(expect.arrayContaining(['save_recipe','import_recipe_image']));expect(tools.find(t=>t.name==='get_recipe_format').description).toContain('complete');

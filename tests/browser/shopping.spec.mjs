@@ -2,6 +2,8 @@ import './local-library-fixture.mjs';
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 const sample=JSON.parse(await readFile(new URL('../../examples/recipe.json',import.meta.url),'utf8'));
+// Legacy fixtures exercise schema mutations independently of translated overlays.
+delete sample.translations;
 const row=(page,id)=>page.locator(`.shopping-item:has([data-shopping-check="${id}"])`);
 const check=(page,id)=>page.locator(`[data-shopping-check="${id}"]`);
 async function save(page,recipe=sample){

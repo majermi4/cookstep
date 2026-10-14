@@ -173,3 +173,22 @@ See [examples/recipe.json](examples/recipe.json) for a complete illustrative rec
 The Cookstep connection uses the same recipe manifest validation. `get_recipe_format` returns the complete preparation guide as well as this contract and an example. `save_recipe` requires the complete recipe, `expectedRevision` from a prior read (null for creation), and a UUID `mutationId` retained across retries. Referenced images must already exist in the user’s Cookstep storage. Use `import_recipe_image` with a discovered direct public HTTPS image URL to download and store original JPEG/PNG/WebP bytes server-side, or `upload_recipe_image` with actual base64 bytes for supplied/generated files. Both return an asset `key` and `suggestedPath`; use the path in the manifest and the key under the corresponding image ID in `save_recipe.assets`. Source URLs remain attribution; cooking uses the stored assets. Unchanged image IDs and paths may reuse existing assets. Source corrections apply to future sessions.
 
 A whole-library ZIP has a root `library.json`: `{"format":"cookstep-library","version":1,"recipes":["recipes/0/recipe.json","recipes/1/recipe.json"]}`. Each numbered directory contains a normal recipe package with paths relative to that directory. Every manifest and image is validated before any recipe is saved. Recipe IDs and index paths must be unique. Existing IDs require an explicit replacement or copy choice. The same archive size and file-count limits apply.
+
+
+## Multilingual text overlays
+
+New recipes and edits through ChatGPT must include complete `translations.en`, `translations.es` and `translations.cs` (English, Spanish and Czech; the language selector labels Czech CZ). Legacy manifests without translations remain importable and show their source language with a missing-translation notice. When `translations` is supplied, validation requires all three complete overlays and rejects structural or numeric overrides.
+
+Each overlay mirrors only the display fields of the canonical recipe. Recipe root: `title`, optional `description`, `yield: {unit}`, `equipment`, `notes`. Keep complete arrays for `components`, `ingredients`, `steps`, `sources` and `images` when present. Their entries retain `id` and supply their display strings: component `title`/`description`; ingredient `name`/`notes`/`quantity: {text}`; step `title`/`instruction`/`completionCue`/`notes`, `ingredientUses` and `timers`; source `title`; image `alt`/`caption`. Ingredient uses retain `ingredientId` and an optional `quantity: {text}`; timers retain `id` and translate `label` and `startLabel`. Equipment and note arrays keep the same ordering and length. Include every text field that exists in the base recipe.
+
+The recipe ID is shared and omitted from the overlay root. IDs inside arrays identify the canonical entries and must remain unchanged. Array order follows the canonical manifest; display matches entries by ID so view generation does not alter progress. Keep `language` as the canonical prose language. Do not put numeric amounts/ranges, machine unit codes, temperature values, timer modes/durations, paths, URLs, authors, source quotations or references in overlays. A translated quantity such as `2 cucharadas` still uses the canonical `value: 2` and `unit: "tbsp_metric"` for scaling.
+
+```json
+{"translations": {
+  "en": {"title":"Tomato sauce", "yield":{"unit":"servings"}, "ingredients":[{"id":"salt","name":"Salt","quantity":{"text":"to taste"}}], "steps":[{"id":"mix","title":"Mix","instruction":"Stir in the salt."}]},
+  "es": {"title":"Salsa de tomate", "yield":{"unit":"porciones"}, "ingredients":[{"id":"salt","name":"Sal","quantity":{"text":"al gusto"}}], "steps":[{"id":"mix","title":"Mezclar","instruction":"Incorpora la sal."}]},
+  "cs": {"title":"Rajčatová omáčka", "yield":{"unit":"porce"}, "ingredients":[{"id":"salt","name":"Sůl","quantity":{"text":"podle chuti"}}], "steps":[{"id":"mix","title":"Promíchej","instruction":"Vmíchej sůl."}]}
+}}
+```
+
+This excerpt illustrates overlays; the downloadable example is a complete valid manifest. Push all locales together whenever creating or updating a recipe. Original source text is retained verbatim for attribution.

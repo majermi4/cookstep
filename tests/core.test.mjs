@@ -5,7 +5,7 @@ import {zipSync,strToU8} from 'fflate';
 import {validateRecipe,formatQuantity,formatTemperature,UNITS,createSession,startTimer,timerState,taskSteps,safePath} from '../src/model.js';
 import {importPackage} from '../public/importer.js';
 const example=JSON.parse(await readFile(new URL('../examples/recipe.json',import.meta.url),'utf8'));
-const fresh=()=>structuredClone(example);
+const fresh=()=>{const r=structuredClone(example);delete r.translations;return r;};
 const file=(data,name)=>new File([data],name);
 
 test('format 0.2 example validates with independent task order',()=>{assert.deepEqual(validateRecipe(example),[]);assert.deepEqual(taskSteps(example,'main').map(s=>s.id),['start-components','combine']);assert.deepEqual(taskSteps(example,'pasta').map(s=>s.id),['boil-water','cook-pasta']);});

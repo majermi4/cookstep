@@ -1,3 +1,5 @@
+import {validateTranslations} from './recipe-locales.js';
+import {t,getLocale} from './i18n.js';
 export const FORMAT_VERSION = '0.2';
 // Remove the suffix automatically added by the original sync conflict handler.
 export const recipeTitle = title => typeof title === 'string' ? title.replace(/(?: \(saved from this device\))+$/, '') : title;
@@ -112,7 +114,7 @@ export function validateRecipe(r, files = null) {
     else if (!files.has(im.path)) fail(`${p}.path`, `missing bundled file “${im.path}”`);
   });
   if (r.coverImageId !== undefined) ref(r.coverImageId,imageIds,'coverImageId');
-  return errors;
+  return errors.length?errors:validateTranslations(r);
 }
 
 export const UNITS = {
@@ -122,12 +124,12 @@ export const UNITS = {
   tbsp_us: ['volume',14.78676478125,'US tbsp'], tbsp_metric: ['volume',15,'metric tbsp'], tbsp_au: ['volume',20,'Australian tbsp'],
   tsp_us: ['volume',4.92892159375,'US tsp'], tsp_metric: ['volume',5,'metric tsp'],
 };
-export const number = n => new Intl.NumberFormat('en', {maximumFractionDigits: n < 1 ? 3 : 2}).format(n);
+export const number = n => new Intl.NumberFormat(getLocale(), {maximumFractionDigits: n < 1 ? 3 : 2}).format(n);
 export function formatQuantity(q, factor = 1, system = 'original') {
-  if (!q) return {text:'Amount not specified',note:'Check the source'};
-  if (q.value === undefined && !q.range) return {text:q.text,note:factor !== 1 ? 'Not scaled' : ''};
+  if (!q) return {text:t('Amount not specified'),note:t('Check the source')};
+  if (q.value === undefined && !q.range) return {text:q.text,note:factor !== 1 ? t('Not scaled') : ''};
   let values = q.range ? [q.range.min * factor,q.range.max * factor] : [q.value * factor];
-  if (values.some(v => !Number.isFinite(v))) return {text:q.text,note:'Quantity exceeds supported range'};
+  if (values.some(v => !Number.isFinite(v))) return {text:q.text,note:t('Quantity exceeds supported range')};
   const source = UNITS[q.unit]; let unit = source?.[2] || q.unit;
   if (source && system !== 'original') {
     const base = values.map(v => v * source[1]);
@@ -135,9 +137,9 @@ export function formatQuantity(q, factor = 1, system = 'original') {
     const target = system === 'metric' ? (source[0] === 'mass' ? (max >= 1000 ? 'kg' : 'g') : (max >= 1000 ? 'l' : 'ml')) : (source[0] === 'mass' ? (max >= 453.59237 ? 'lb' : 'oz') : (max >= 236.5882365 ? 'cup_us' : 'fl_oz_us'));
     values = base.map(v => v / UNITS[target][1]); unit = UNITS[target][2];
   }
-  const note = !source && system !== 'original' && ['cup','tbsp','tsp','fl_oz','fluid ounce'].includes(q.unit) ? 'Unit convention unknown · not converted' : '';
+  const note = !source && system !== 'original' && ['cup','tbsp','tsp','fl_oz','fluid ounce'].includes(q.unit) ? t('Unit convention unknown · not converted') : '';
   if (factor === 1 && (system === 'original' || !source)) return {text:q.text,note};
-  return {text: `${values.map(number).join('–')} ${unit}`,note};
+  return {text: `${values.map(number).join('–')} ${t(unit)}`,note};
 }
 export function formatTemperature(t, system) {
   const unit = system === 'metric' ? 'C' : system === 'imperial' ? 'F' : t.unit;

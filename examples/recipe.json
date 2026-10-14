@@ -146,5 +146,376 @@
       "title": "Combine and serve",
       "instruction": "Once both pasta and sauce are ready, drain the pasta and stir it into the sauce. Taste and serve."
     }
-  ]
+  ],
+  "translations": {
+    "en": {
+      "title": "Simple tomato pasta",
+      "description": "Illustrative recipe for demonstrating the import format.",
+      "yield": {
+        "unit": "servings"
+      },
+      "components": [
+        {
+          "id": "sauce",
+          "title": "Tomato sauce"
+        },
+        {
+          "id": "pasta",
+          "title": "Cook pasta"
+        }
+      ],
+      "equipment": [
+        "Saucepan",
+        "Frying pan",
+        "Colander"
+      ],
+      "ingredients": [
+        {
+          "id": "pasta",
+          "name": "Dried pasta",
+          "quantity": {
+            "text": "200 g"
+          }
+        },
+        {
+          "id": "tomatoes",
+          "name": "Chopped tomatoes",
+          "quantity": {
+            "text": "400 g"
+          }
+        },
+        {
+          "id": "oil",
+          "name": "Olive oil",
+          "quantity": {
+            "text": "1 US tbsp"
+          }
+        },
+        {
+          "id": "salt",
+          "name": "Salt",
+          "quantity": {
+            "text": "to taste"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "start-components",
+          "title": "Prepare sauce and pasta",
+          "instruction": "Start the sauce, then cook the pasta while it simmers."
+        },
+        {
+          "id": "boil-water",
+          "title": "Bring water to a boil",
+          "instruction": "Bring a saucepan of water to a boil and salt to taste.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "to taste"
+              },
+              "ingredientId": "salt"
+            }
+          ]
+        },
+        {
+          "id": "simmer-sauce",
+          "title": "Simmer the sauce",
+          "instruction": "Add oil and tomatoes to a frying pan. Simmer gently for 10 minutes, stirring occasionally.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "1 US tbsp"
+              },
+              "ingredientId": "oil"
+            },
+            {
+              "quantity": {
+                "text": "400 g"
+              },
+              "ingredientId": "tomatoes"
+            }
+          ],
+          "timers": [
+            {
+              "id": "sauce-timer",
+              "label": "Tomato sauce",
+              "startLabel": "Sauce is simmering"
+            }
+          ]
+        },
+        {
+          "id": "cook-pasta",
+          "title": "Cook the pasta",
+          "instruction": "Add pasta to boiling water. Cook for the packet time until done to your preference.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "200 g"
+              },
+              "ingredientId": "pasta"
+            }
+          ],
+          "timers": [
+            {
+              "id": "pasta-timer",
+              "label": "Pasta cooking",
+              "startLabel": "Pasta is in the water"
+            }
+          ]
+        },
+        {
+          "id": "combine",
+          "title": "Combine and serve",
+          "instruction": "Once both pasta and sauce are ready, drain the pasta and stir it into the sauce. Taste and serve."
+        }
+      ]
+    },
+    "es": {
+      "title": "Pasta sencilla con tomate",
+      "description": "Receta ilustrativa para demostrar el formato de importación.",
+      "yield": {
+        "unit": "porciones"
+      },
+      "components": [
+        {
+          "id": "sauce",
+          "title": "Salsa de tomate"
+        },
+        {
+          "id": "pasta",
+          "title": "Cocer la pasta"
+        }
+      ],
+      "equipment": [
+        "Cacerola",
+        "Sartén",
+        "Colador"
+      ],
+      "ingredients": [
+        {
+          "id": "pasta",
+          "name": "Pasta seca",
+          "quantity": {
+            "text": "200 g"
+          }
+        },
+        {
+          "id": "tomatoes",
+          "name": "Tomates troceados",
+          "quantity": {
+            "text": "400 g"
+          }
+        },
+        {
+          "id": "oil",
+          "name": "Aceite de oliva",
+          "quantity": {
+            "text": "1 cucharada estadounidense"
+          }
+        },
+        {
+          "id": "salt",
+          "name": "Sal",
+          "quantity": {
+            "text": "al gusto"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "start-components",
+          "title": "Preparar la salsa y la pasta",
+          "instruction": "Empieza la salsa y cocina la pasta mientras hierve suavemente."
+        },
+        {
+          "id": "boil-water",
+          "title": "Hervir el agua",
+          "instruction": "Lleva una cacerola de agua a ebullición y sala al gusto.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "al gusto"
+              },
+              "ingredientId": "salt"
+            }
+          ]
+        },
+        {
+          "id": "simmer-sauce",
+          "title": "Cocer la salsa a fuego suave",
+          "instruction": "Añade aceite y tomates a la sartén. Cocina a fuego suave 10 minutos, removiendo ocasionalmente.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "1 cucharada estadounidense"
+              },
+              "ingredientId": "oil"
+            },
+            {
+              "quantity": {
+                "text": "400 g"
+              },
+              "ingredientId": "tomatoes"
+            }
+          ],
+          "timers": [
+            {
+              "id": "sauce-timer",
+              "label": "Salsa de tomate",
+              "startLabel": "La salsa está hirviendo suavemente"
+            }
+          ]
+        },
+        {
+          "id": "cook-pasta",
+          "title": "Cocer la pasta",
+          "instruction": "Añade la pasta al agua hirviendo. Cocina el tiempo del paquete hasta el punto que prefieras.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "200 g"
+              },
+              "ingredientId": "pasta"
+            }
+          ],
+          "timers": [
+            {
+              "id": "pasta-timer",
+              "label": "Pasta cocinándose",
+              "startLabel": "La pasta está en el agua"
+            }
+          ]
+        },
+        {
+          "id": "combine",
+          "title": "Mezclar y servir",
+          "instruction": "Cuando pasta y salsa estén listas, escurre la pasta y mézclala con la salsa. Prueba y sirve."
+        }
+      ]
+    },
+    "cs": {
+      "title": "Jednoduché těstoviny s rajčaty",
+      "description": "Ukázkový recept pro předvedení formátu importu.",
+      "yield": {
+        "unit": "porce"
+      },
+      "components": [
+        {
+          "id": "sauce",
+          "title": "Rajčatová omáčka"
+        },
+        {
+          "id": "pasta",
+          "title": "Uvařit těstoviny"
+        }
+      ],
+      "equipment": [
+        "Rendlík",
+        "Pánev",
+        "Cedník"
+      ],
+      "ingredients": [
+        {
+          "id": "pasta",
+          "name": "Sušené těstoviny",
+          "quantity": {
+            "text": "200 g"
+          }
+        },
+        {
+          "id": "tomatoes",
+          "name": "Krájená rajčata",
+          "quantity": {
+            "text": "400 g"
+          }
+        },
+        {
+          "id": "oil",
+          "name": "Olivový olej",
+          "quantity": {
+            "text": "1 americká lžíce"
+          }
+        },
+        {
+          "id": "salt",
+          "name": "Sůl",
+          "quantity": {
+            "text": "podle chuti"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "start-components",
+          "title": "Připrav omáčku a těstoviny",
+          "instruction": "Začni omáčkou, pak během jejího vaření uvař těstoviny."
+        },
+        {
+          "id": "boil-water",
+          "title": "Přiveď vodu k varu",
+          "instruction": "Přiveď vodu v rendlíku k varu a osol podle chuti.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "podle chuti"
+              },
+              "ingredientId": "salt"
+            }
+          ]
+        },
+        {
+          "id": "simmer-sauce",
+          "title": "Povař omáčku",
+          "instruction": "Do pánve dej olej a rajčata. Mírně vař 10 minut za občasného míchání.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "1 americká lžíce"
+              },
+              "ingredientId": "oil"
+            },
+            {
+              "quantity": {
+                "text": "400 g"
+              },
+              "ingredientId": "tomatoes"
+            }
+          ],
+          "timers": [
+            {
+              "id": "sauce-timer",
+              "label": "Rajčatová omáčka",
+              "startLabel": "Omáčka se mírně vaří"
+            }
+          ]
+        },
+        {
+          "id": "cook-pasta",
+          "title": "Uvař těstoviny",
+          "instruction": "Do vroucí vody přidej těstoviny. Vař podle času na obalu na požadovanou měkkost.",
+          "ingredientUses": [
+            {
+              "quantity": {
+                "text": "200 g"
+              },
+              "ingredientId": "pasta"
+            }
+          ],
+          "timers": [
+            {
+              "id": "pasta-timer",
+              "label": "Vaření těstovin",
+              "startLabel": "Těstoviny jsou ve vodě"
+            }
+          ]
+        },
+        {
+          "id": "combine",
+          "title": "Smíchej a podávej",
+          "instruction": "Až jsou těstoviny i omáčka hotové, těstoviny slij a vmíchej do omáčky. Ochutnej a podávej."
+        }
+      ]
+    }
+  }
 }

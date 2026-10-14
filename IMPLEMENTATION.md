@@ -43,3 +43,11 @@ Verified: 22 unit checks, TypeScript, and three affected browser checks pass. A 
 ## Illustrations for missing step visuals — 2026-10-12
 
 The preparation guide, canonical copyable prompt, format guidance and MCP descriptions now explicitly direct recipe preparers to generate and upload a dedicated illustration for every cooking step without a relevant source image before saving. Generated assets require `kind: "illustration"` and `origin: "ai_generated"`; unavailable or failed generation must be disclosed with the uncovered steps. Existing source photos and the source cover remain intact. This is preparation guidance; the image-optional import contract remains compatible with older recipes.
+
+## English, Spanish and Czech — 2026-10-14
+
+Added a persistent EN/ES/CZ selector to library, import, recipe, shopping and cooking views and every dialog. Switching re-renders display text while keeping the canonical recipe/session data, active timers, task positions, ingredient and purchase checks, scaling, and manual timer input intact. The stored locale uses `cs` for Czech and updates the document language. UI message templates translate authored text and accessible labels before interpolating recipe/user values, with locale-aware numbers and unit labels.
+
+Format 0.2 accepts complete text-only `translations.en/es/cs` overlays, validates their field coverage and stable IDs, and rejects numeric/structural overrides. Legacy packages remain readable with a source-language fallback notice. Shared images, source quotations, quantities and timer durations stay canonical; ZIP and cloud paths preserve every locale. Matching pre-existing active/shopping snapshots receive translation metadata without replacing culinary content. The five existing synced recipes were translated and reread to verify every locale and exact retention of canonical content and image references.
+
+The complete preparation guide, format contract, example, copied prompts, MCP descriptions and save workflow require all locales on every push. ChatGPT saves reject manifests without translations. Physical iPad acceptance remains pending; isolated desktop Chromium verifies language persistence, cooking/shopping state, dialog inputs, and responsive layouts across four themes.

@@ -58,6 +58,12 @@ No recipe extraction, in-app recipe editing, offline-loading guarantee or backgr
 
 Actual iPad Chrome and Brave screen-awake, foreground sound and storage recovery require device acceptance. Desktop Chromium and responsive viewport tests do not establish iPad browser behavior. The app explicitly reports when screen wake or sound is unavailable. Browser storage can be cleared or evicted; retain original recipe packages for re-import.
 
+## Languages
+
+Use the EN / ES / CZ selector in the header on every app page and in dialogs. The language stays on this device; switching while cooking preserves timers, progress, amounts and step position. Recipes store complete English (`en`), Spanish (`es`) and Czech (`cs`) text overlays under the same stable ID. Numeric quantities, unit codes, references, source quotations and images remain shared. ZIP exports and cloud sync retain all three locales. Older imported recipes without translations remain readable in their original language; use ChatGPT to translate them.
+
+The preparation guide, copied add/edit prompts and recipe tools require all locales on every push. Supplied overlays are checked for complete coverage and reject changes to structural/numeric data.
+
 ## Themes
 
 `src/themes.js` is the theme registry: semantic color roles, typography, radii, shadows, spacing, color scheme and a layout variant. `src/theme-scales.js` holds the shared scales and food illustration tokens. All interface styling consumes CSS custom properties. Fixed hit-target sizes, responsive breakpoints and illustration geometry are deliberately layout constraints.
