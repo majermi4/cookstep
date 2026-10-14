@@ -1,5 +1,7 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Settings": ["Ajustes", "Nastavení"],
+  "Back to settings": ["Volver a ajustes", "Zpět do nastavení"],
   "Amount needs metric clarification": ["La cantidad necesita aclaración en unidades métricas", "Množství je potřeba upřesnit v metrických jednotkách"],
   "Cookstep — a little calm in the kitchen": ["Cookstep — un poco de calma en la cocina", "Cookstep — trocha klidu v kuchyni"],
   "Screen wake not active": [

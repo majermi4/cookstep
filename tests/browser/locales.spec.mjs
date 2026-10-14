@@ -1,10 +1,10 @@
 import './local-library-fixture.mjs';
 import{test,expect}from'@playwright/test';
-const choose=async(page,locale)=>page.locator('[data-locale]').first().selectOption(locale);
+const choose=async(page,locale)=>{await page.locator('.settings-trigger').click();await page.locator('[data-locale]').selectOption(locale);await page.locator('.modal-close').click();};
 const snapshot=page=>page.evaluate(async()=>{const{read}=await import('/storage.js');return{session:await read('sessions','active'),shopping:await read('shopping')};});
 test('locale switches translate every view, preserve cooking and shopping state, and survive reload',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto('/');await choose(page,'es');await expect(page.locator('html')).toHaveAttribute('lang','es');await expect(page.locator('.nav-link[data-action="library"]')).toContainText('Mis recetas');
+ await page.goto('/');await choose(page,'es');await expect(page.locator('html')).toHaveAttribute('lang','es');await expect(page.locator('.settings-trigger')).toHaveAttribute('aria-label','Ajustes');
  await page.locator('[data-action="example"]').click();await expect(page.locator('h1')).toHaveText('Pasta sencilla con tomate');
  await choose(page,'cs');await expect(page.locator('h1')).toHaveText('Jednoduché těstoviny s rajčaty');await expect(page.locator('[data-action="save-import"]')).toHaveText('Uložit do mých receptů');
  await page.locator('[data-action="save-import"]').click();await page.locator('[data-action="shopping"]').click();
@@ -22,18 +22,19 @@ test('locale switches translate every view, preserve cooking and shopping state,
 test('language controls and translated layouts fit every theme on phone and tablet',async({page})=>{
  await page.goto('/');await page.locator('[data-action="example"]').click();await page.locator('[data-action="save-import"]').click();
  for(const theme of ['editorial-cookbook','kitchen-appliance','cozy-illustrated','recipe-studio']){
-  await page.locator('[data-action="theme-settings"]').click();await page.locator(`input[name="theme"][value="${theme}"]`).check();await page.locator('[data-action="close-modal"]').last().click();
-  for(const locale of ['en','es','cs']){await choose(page,locale);for(const size of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768}]){await page.setViewportSize(size);await expect(page.locator('[data-locale]').first()).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}}
+  await page.locator('.settings-trigger').click();await page.locator('[data-action="theme-settings"]').click();await page.locator(`input[name="theme"][value="${theme}"]`).check();await page.locator('[data-action="close-modal"]').last().click();
+  for(const locale of ['en','es','cs']){await choose(page,locale);for(const size of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768}]){await page.setViewportSize(size);await page.locator('.settings-trigger').click();await expect(page.locator('[data-locale]')).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);if(size.width===390)await page.screenshot({path:`artifacts/settings-${theme}-${locale}.png`});await page.locator('.modal-close').click();}}
  }
  await page.screenshot({path:'artifacts/localization/czech-tablet.png'});
 });
 
-test('switching inside dialogs translates controls and preserves manual timer input',async({page})=>{
- await page.goto('/');await page.locator('[data-action="example"]').click();await page.locator('[data-action="save-import"]').click();await page.locator('[data-action="start"]').click();await page.locator('.timer-panel summary').click();await page.locator('[data-action="manual"]').click();
- await page.locator('#timer-name').fill('My custom rice');await page.locator('#timer-minutes').fill('9');await page.locator('#timer-batch').fill('Batch A');
- await page.locator('#modal [data-locale]').selectOption('cs');await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('#manual-form label').first()).toHaveText('Co se vaří?');await expect(page.locator('#timer-name')).toHaveValue('My custom rice');await expect(page.locator('#timer-minutes')).toHaveValue('9');await expect(page.locator('#timer-batch')).toHaveValue('Batch A');await expect(page.locator('.timer-card')).toHaveCount(0);
+test('task dialogs have no locale picker and settings remain reachable while cooking',async({page})=>{
+ await page.goto('/');await page.locator('[data-action="example"]').click();await page.locator('[data-action="save-import"]').click();
+ await page.locator('[data-action="recipe-options"]').click();await expect(page.locator('#modal [data-locale]')).toHaveCount(0);await expect(page.locator('[data-action="export-recipe"]')).toBeVisible();await page.locator('.modal-close').click();
+ await page.locator('[data-action="start"]').click();await page.locator('.timer-panel summary').click();await page.locator('[data-action="manual"]').click();
+ await expect(page.locator('#modal [data-locale]')).toHaveCount(0);await page.locator('#timer-name').fill('My custom rice');await page.locator('#timer-minutes').fill('9');await page.locator('#timer-batch').fill('Batch A');
  await page.locator('#manual-form [type="submit"]').click();await expect(page.locator('.timer-card-heading')).toContainText('My custom rice');const before=await snapshot(page);
- await page.locator('[data-action="cooking-menu"]').click();await page.locator('#modal [data-locale]').selectOption('es');await expect(page.locator('#modal h2')).toHaveText('Opciones de cocina');expect((await snapshot(page)).session).toEqual(before.session);
+ await choose(page,'es');await page.locator('[data-action="cooking-menu"]').click();await expect(page.locator('#modal h2')).toHaveText('Opciones de cocina');await expect(page.locator('#modal [data-locale]')).toHaveCount(0);expect((await snapshot(page)).session).toEqual(before.session);
 });
 
 test('cached translations also enrich matching older session and shopping snapshots on launch',async({page})=>{

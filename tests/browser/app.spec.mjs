@@ -7,7 +7,8 @@ const sample=JSON.parse(await readFile(new URL('../../examples/recipe.json',impo
 delete sample.translations;
 const click=async(page,action)=>{
   if(['library','finish'].includes(action)&&await page.locator('.cooking-page').count()&&!await page.getByRole('dialog').isVisible())await page.getByRole('button',{name:'Cooking options',exact:true}).click();
-  return action==='library'?page.getByRole('button',{name:'My recipes',exact:true}).click():page.locator(`[data-action="${action}"]`).click();
+  if(action==='settings')return page.locator('.settings-trigger').click();
+  return action==='library'?page.getByRole('button',{name:await page.locator('.cooking-page').count()?'My recipes':'Cookstep home',exact:true}).click():page.locator(`[data-action="${action}"]`).click();
 };
 const upload=(page,recipe)=>page.locator('#file-input').setInputFiles({name:'recipe.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(recipe))});
 async function saveExample(page){await page.goto('/');await click(page,'example');await expect(page.getByText('Package validated.',{exact:false})).toBeVisible();await click(page,'save-import');await expect(page.getByRole('button',{name:'Start cooking',exact:true})).toBeVisible();}
@@ -251,7 +252,7 @@ test('completed current steps keep their number and highlight without notes or i
   const current=page.locator('.step-track button.current.complete');
   await expect(current).toHaveAttribute('aria-current','step');await expect(current.locator('.rail-number')).toHaveText('2');await expect(current.locator('.rail-check')).toBeVisible();
   for(const theme of ['editorial-cookbook','kitchen-appliance','cozy-illustrated','recipe-studio']){
-    await click(page,'cooking-menu');await click(page,'theme-settings');await page.locator(`input[name="theme"][value="${theme}"]`).check();await page.getByRole('button',{name:'Done',exact:true}).click();
+    await click(page,'settings');await click(page,'theme-settings');await page.locator(`input[name="theme"][value="${theme}"]`).check();await page.getByRole('button',{name:'Done',exact:true}).click();
     const active=current.locator('.rail-number'),other=page.locator('.step-track button.complete').first().locator('.rail-number');
     const activeStyle=await active.evaluate(el=>({background:getComputedStyle(el).backgroundColor,outline:getComputedStyle(el).outlineWidth}));
     expect(activeStyle.outline).toBe('2px');expect(activeStyle.outline).not.toBe(await other.evaluate(el=>getComputedStyle(el).outlineWidth));

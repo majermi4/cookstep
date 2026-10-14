@@ -1,13 +1,13 @@
 import './local-library-fixture.mjs';
 import {test,expect} from '@playwright/test';
 import {THEMES} from '../../src/themes.js';
-const click=(page,action)=>{
-  const names={library:'My recipes',resume:'Resume cooking','close-modal':'Done'};
+const click=async(page,action)=>{
+  if(action==='theme-settings')await page.locator('.settings-trigger').click();
+  const names={library:'Cookstep home',resume:'Resume cooking','close-modal':'Done'};
   return names[action]?page.getByRole('button',{name:names[action],exact:true}).click():page.locator(`[data-action="${action}"]`).click();
 };
 async function saveExample(page){await page.goto('/');await click(page,'example');await click(page,'save-import');}
 async function choose(page,id,cooking=false){
-  if(cooking)await click(page,'cooking-menu');
   await click(page,'theme-settings');
   await page.locator(`input[name="theme"][value="${id}"]`).check();
   await expect(page.locator('html')).toHaveAttribute('data-theme',id);
@@ -16,7 +16,7 @@ async function choose(page,id,cooking=false){
 }
 const savedSession=page=>page.evaluate(async()=>{const {read}=await import('/storage.js');return read('sessions','active');});
 test('themes remain selected across navigation and reload, and keyboard selection works',async({page})=>{
-  await page.goto('/');await page.getByRole('button',{name:'Theme',exact:true}).click();
+  await page.goto('/');await click(page,'theme-settings');
   await expect(page.getByRole('radio')).toHaveCount(4);
   await page.getByRole('radio',{name:/Editorial Cookbook/}).focus();await page.keyboard.press('ArrowDown');
   await expect(page.locator('html')).toHaveAttribute('data-theme','kitchen-appliance');

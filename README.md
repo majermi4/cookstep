@@ -39,7 +39,7 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 - The timer panel collapses when idle and opens automatically when a timer starts.
 - Compact cooking header with recipe overview, library, sound, screen status and finish controls in an options menu.
 - Fullscreen toggle and an optional continuous view of every cooking step, selected in Cooking options.
-- Four switchable themes: Editorial Cookbook, Kitchen Appliance, Cozy Illustrated and Recipe Studio. Open Theme in the main navigation or Cooking options; the preference stays on this device.
+- Four switchable themes: Editorial Cookbook, Kitchen Appliance, Cozy Illustrated and Recipe Studio. Open the gear icon → Theme; the preference stays on this device.
 - Large per-step ingredient checkboxes with preparation progress saved across views, task switches and reloads.
 - User-started countdowns, elapsed tracking, named repeated batches, manual timers and links to originating steps.
 - Visual expiry alerts, foreground sound activation, stopped-timer acknowledgement and overdue/elapsed display.
@@ -52,7 +52,7 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 
 ## Scope and verification limits
 
-Import once, wait for “Recipes synced across devices”, and open the same private Site while signed into the same account on other devices. Existing recipes on this origin migrate automatically; use Sync now or Retry sync to refresh. Library syncing runs on launch, reconnection, return to the tab and every minute while visible. Simultaneous replacements preserve a separate copy instead of overwriting another device’s edits.
+Import once, wait for “Recipes synced across devices”, and open the same private Site while signed into the same account on other devices. Existing recipes on this origin migrate automatically; open the gear icon and use Sync now or Retry sync to refresh. Library syncing runs on launch, reconnection, return to the tab and every minute while visible. Simultaneous replacements preserve a separate copy instead of overwriting another device’s edits.
 
 No recipe extraction, in-app recipe editing, offline-loading guarantee or background/lock-screen notifications. Shopping lists, cooking sessions and timers remain device-local. Changing yield is locked during cooking. Recipe quantities, instruction measurements and temperatures are metric. Scalable quantities and Celsius temperatures use structured fields.
 
@@ -60,7 +60,7 @@ Actual iPad Chrome and Brave screen-awake, foreground sound and storage recovery
 
 ## Languages
 
-Use the EN / ES / CZ selector in the header on every app page and in dialogs. The language stays on this device; switching while cooking preserves timers, progress, amounts and step position. Recipes store complete English (`en`), Spanish (`es`) and Czech (`cs`) text overlays under the same stable ID. Numeric quantities, unit codes, references, source quotations and images remain shared. ZIP exports and cloud sync retain all three locales. Older imported recipes without translations remain readable in their original language; use ChatGPT to translate them.
+Open the gear icon → Language on any app page, including while cooking. The language stays on this device; switching while cooking preserves timers, progress, amounts and step position. Recipes store complete English (`en`), Spanish (`es`) and Czech (`cs`) text overlays under the same stable ID. Numeric quantities, unit codes, references, source quotations and images remain shared. ZIP exports and cloud sync retain all three locales. Older imported recipes without translations remain readable in their original language; use ChatGPT to translate them.
 
 The preparation guide, copied add/edit prompts and recipe tools require all locales on every push. Supplied overlays are checked for complete coverage and reject changes to structural/numeric data.
 
@@ -80,7 +80,7 @@ The four compositions are documented in [DESIGN.md](DESIGN.md). Editorial pairs 
 
 ## Edit through ChatGPT
 
-The private Cookstep Site exposes `/mcp` through its Sites-provisioned plugin. Install or connect **Cookstep** from Plugins → Created by you, then select it in ChatGPT. Ask, for example, “Use Cookstep to change the cheese in my quesadilla recipe and save it,” or supply a recipe source and ask to add it. Return to Cookstep and use **Sync now**, or wait for the normal refresh.
+The private Cookstep Site exposes `/mcp` through its Sites-provisioned plugin. Install or connect **Cookstep** from Plugins → Created by you, then select it in ChatGPT. Ask, for example, “Use Cookstep to change the cheese in my quesadilla recipe and save it,” or supply a recipe source and ask to add it. Return to Cookstep and open the gear icon → **Sync now**, or wait for the normal refresh.
 
 Tools: `get_recipe_format`, `list_recipes` (paginated search), `get_recipe`, `import_recipe_image` (direct public HTTPS JPEG/PNG/WebP URL), `upload_recipe_image` (base64 JPEG/PNG/WebP), and `save_recipe`. The format response includes the full preparation guide, not just the schema. The app's add/edit prompts and the public guide reuse the guide's canonical preparation text; direct and ZIP delivery retain the same cooking requirements.
 

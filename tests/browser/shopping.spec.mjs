@@ -68,7 +68,7 @@ test('shopping remains usable across themes on phone and tablet and does not inv
   await settings(page);await expect(page.locator('.shopping-settings')).toContainText('People per recipe are not specified');
   await page.locator('.shopping-settings-panel summary').click();
   for(const theme of ['editorial-cookbook','kitchen-appliance','cozy-illustrated','recipe-studio']){
-    await page.getByRole('button',{name:'Theme',exact:true}).click();await page.locator(`input[name="theme"][value="${theme}"]`).check();await page.getByRole('button',{name:'Done',exact:true}).click();
+    await page.locator('.settings-trigger').click();await page.getByRole('button',{name:'Theme',exact:true}).click();await page.locator(`input[name="theme"][value="${theme}"]`).check();await page.getByRole('button',{name:'Done',exact:true}).click();
     for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768}]){
       await page.setViewportSize(viewport);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
