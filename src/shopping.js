@@ -1,3 +1,4 @@
+import {metricRecipe,metricQuantity} from './metric.js';
 import {t,ui,getLocale} from './i18n.js';
 import {localizeRecipe} from './recipe-locales.js';
 import {formatQuantity,number} from './model.js';
@@ -7,8 +8,8 @@ export function peopleForRecipe(recipe) {
 }
 
 // A list stores recipe data only; it never shares cooking checkboxes or images.
-export function createShoppingList(recipe,target=recipe.yield.quantity,units='original') {
-  return {id:recipe.id,recipe:structuredClone(recipe),target,units,checked:[],updatedAt:Date.now()};
+export function createShoppingList(recipe,target=recipe.yield.quantity) {
+  return {id:recipe.id,recipe:structuredClone(metricRecipe(recipe)),target,checked:[],updatedAt:Date.now()};
 }
 export function shoppingRecipeKey(recipe) {
   return JSON.stringify([recipe.yield,recipe.servings,recipe.ingredients,recipe.components]);
@@ -20,8 +21,8 @@ export function shoppingProgress(list) {
 }
 
 const wholeUnits=new Set(['piece','pieces','item','items','count','whole','egg','eggs','clove','cloves','tortilla','tortillas','can','cans','tin','tins','bottle','bottles','packet','packets','pack','packs','bunch','bunches','slice','slices','head','heads']);
-export function shoppingQuantity(ingredient,factor,units) {
-  const q=ingredient.quantity,result=formatQuantity(q,factor,units);
+export function shoppingQuantity(ingredient,factor) {
+  const q=metricQuantity(ingredient.quantity,{},false),result=formatQuantity(q,factor);
   const notes=[result.note];
   // Keep source wording: it can specify sizes (e.g. 20 cm tortillas or 400 g tins).
   if(q?.text&&result.text!==q.text)notes.push(ui`Original amount: ${q.text}`);
@@ -36,7 +37,7 @@ export function shoppingText(list) {
   const r=localizeRecipe(list.recipe,getLocale()),factor=list.target/r.yield.quantity,people=peopleForRecipe(list.recipe);
   return [ui`${r.title} — shopping list`,`${number(list.target)} ${r.yield.unit}${people?ui` · ${number(people*factor)} people`:''}`,
     ...r.ingredients.map(i=>{
-      const q=shoppingQuantity(i,factor,list.units);
+      const q=shoppingQuantity(i,factor);
       return `${list.checked.includes(i.id)?'[x]':'[ ]'} ${i.name} — ${q.text}${i.optional?t(' (optional)'):''}${i.notes?` · ${i.notes}`:''}${q.notes.length?` · ${q.notes.join(' · ')}`:''}`;
     })].join('\n');
 }

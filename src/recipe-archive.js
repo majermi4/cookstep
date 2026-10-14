@@ -1,3 +1,4 @@
+import {metricRecipe} from './metric.js';
 import {zipSync,unzip,strToU8,strFromU8} from './vendor/fflate.js';
 import {LIMITS,safePath,validateRecipe} from './model.js';
 import {importPackage,imageMime} from './importer.js';
@@ -9,7 +10,7 @@ export async function exportRecipes(records,wholeLibrary=false) {
   if(wholeLibrary)add('library.json',strToU8(JSON.stringify({format:'cookstep-library',version:1,recipes:records.map((_,i)=>`recipes/${i}/recipe.json`)})));
   for(const [i,record] of records.entries()){
     const prefix=wholeLibrary?`recipes/${i}/`:'';
-    const manifest=strToU8(JSON.stringify(record.recipe,null,2));
+    const manifest=strToU8(JSON.stringify(metricRecipe(record.recipe),null,2));
     if(manifest.length>LIMITS.json)throw new Error('Recipe manifest exceeds 2 MB.');
     add(prefix+'recipe.json',manifest);
     for(const image of record.recipe.images||[]){
@@ -49,6 +50,7 @@ export async function importRecipes(file) {
     try{recipe=JSON.parse(strFromU8(files[path]));}catch{throw new Error('Invalid recipe JSON in library.');}
     const errors=validateRecipe(recipe,new Set(Object.keys(files).filter(p=>p.startsWith(prefix)).map(p=>p.slice(prefix.length))));
     if(errors.length){const error=new Error('Please correct the library archive before importing.');error.details=errors;throw error;}
+    recipe=metricRecipe(recipe,{strict:true});
     if(ids.has(recipe.id))throw new Error('Library archive contains duplicate recipe IDs.');
     ids.add(recipe.id);const assets={};
     for(const image of recipe.images||[]){const bytes=files[prefix+image.path],type=imageMime(bytes);if(!type||bytes.length>LIMITS.image)throw new Error('Unsupported recipe image.');assets[image.id]=new Blob([bytes],{type});}

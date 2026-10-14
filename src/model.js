@@ -1,3 +1,4 @@
+import {METRIC_UNITS,metricQuantity,metricRecord} from './metric.js';
 import {validateTranslations} from './recipe-locales.js';
 import {t,getLocale} from './i18n.js';
 export const FORMAT_VERSION = '0.2';
@@ -5,6 +6,7 @@ export const FORMAT_VERSION = '0.2';
 export const recipeTitle = title => typeof title === 'string' ? title.replace(/(?: \(saved from this device\))+$/, '') : title;
 export function cleanRecordTitle(record) {
   if(!record?.recipe)return record;
+  record=metricRecord(record);
   const title=recipeTitle(record.recipe.title);
   return title===record.recipe.title?record:{...record,recipe:{...record.recipe,title}};
 }
@@ -117,38 +119,28 @@ export function validateRecipe(r, files = null) {
   return errors.length?errors:validateTranslations(r);
 }
 
-export const UNITS = {
-  g: ['mass',1,'g'], kg: ['mass',1000,'kg'], oz: ['mass',28.349523125,'oz'], lb: ['mass',453.59237,'lb'],
-  ml: ['volume',1,'ml'], l: ['volume',1000,'l'], fl_oz_us: ['volume',29.5735295625,'US fl oz'], fl_oz_uk: ['volume',28.4130625,'UK fl oz'],
-  cup_us: ['volume',236.5882365,'US cups'], cup_metric: ['volume',250,'metric cups'],
-  tbsp_us: ['volume',14.78676478125,'US tbsp'], tbsp_metric: ['volume',15,'metric tbsp'], tbsp_au: ['volume',20,'Australian tbsp'],
-  tsp_us: ['volume',4.92892159375,'US tsp'], tsp_metric: ['volume',5,'metric tsp'],
-};
 export const number = n => new Intl.NumberFormat(getLocale(), {maximumFractionDigits: n < 1 ? 3 : 2}).format(n);
-export function formatQuantity(q, factor = 1, system = 'original') {
+export function formatQuantity(q, factor = 1) {
   if (!q) return {text:t('Amount not specified'),note:t('Check the source')};
+  q=metricQuantity(q,{},false);
   if (q.value === undefined && !q.range) return {text:q.text,note:factor !== 1 ? t('Not scaled') : ''};
   let values = q.range ? [q.range.min * factor,q.range.max * factor] : [q.value * factor];
   if (values.some(v => !Number.isFinite(v))) return {text:q.text,note:t('Quantity exceeds supported range')};
-  const source = UNITS[q.unit]; let unit = source?.[2] || q.unit;
-  if (source && system !== 'original') {
-    const base = values.map(v => v * source[1]);
-    const max = Math.max(...base);
-    const target = system === 'metric' ? (source[0] === 'mass' ? (max >= 1000 ? 'kg' : 'g') : (max >= 1000 ? 'l' : 'ml')) : (source[0] === 'mass' ? (max >= 453.59237 ? 'lb' : 'oz') : (max >= 236.5882365 ? 'cup_us' : 'fl_oz_us'));
-    values = base.map(v => v / UNITS[target][1]); unit = UNITS[target][2];
+  const source=METRIC_UNITS[q.unit];let unit=q.unit;
+  if(source){const base=values.map(v=>v*source[1]),max=Math.max(...base);
+    unit=source[0]==='mass'?(max>=1000?'kg':'g'):source[0]==='volume'?(max>=1000?'l':'ml'):q.unit;
+    values=base.map(v=>v/METRIC_UNITS[unit][1]);
   }
-  const note = !source && system !== 'original' && ['cup','tbsp','tsp','fl_oz','fluid ounce'].includes(q.unit) ? t('Unit convention unknown · not converted') : '';
-  if (factor === 1 && (system === 'original' || !source)) return {text:q.text,note};
-  return {text: `${values.map(number).join('–')} ${t(unit)}`,note};
+  if(factor===1)return {text:q.text,note:''};
+  return {text:values.map(number).join('–')+' '+t(unit),note:''};
 }
-export function formatTemperature(t, system) {
-  const unit = system === 'metric' ? 'C' : system === 'imperial' ? 'F' : t.unit;
-  const value = unit === t.unit ? t.value : unit === 'F' ? t.value * 9 / 5 + 32 : (t.value - 32) * 5 / 9;
-  return `${number(value)} °${unit}`;
+export function formatTemperature(temperature) {
+  const value=temperature.unit==='F'?(temperature.value-32)*5/9:temperature.value;
+  return `${number(value)} °C`;
 }
 export function taskSteps(recipe, task) { return recipe.steps.filter(s => (s.componentId || 'main') === task); }
-export function createSession(record, target, units) {
-  return {id:'active',record:structuredClone(record),target,units,activeTask:'main',opened:['main'],positions:{main:0},completed:[],preparedIngredients:[],cookingView:'steps',timers:[],startedAt:Date.now()};
+export function createSession(record, target) {
+  return {id:'active',record:structuredClone(metricRecord(record)),target,activeTask:'main',opened:['main'],positions:{main:0},completed:[],preparedIngredients:[],cookingView:'steps',timers:[],startedAt:Date.now()};
 }
 export function startTimer(session, template, step, now = Date.now(), batch = '') {
   return {instanceId:crypto.randomUUID(),templateId:template.id,label:template.label,mode:template.mode,durationSeconds:template.durationSeconds,stepId:step?.id,task:step?.componentId || session.activeTask,startedAt:now,batch:batch.trim()};

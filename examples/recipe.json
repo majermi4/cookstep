@@ -47,9 +47,9 @@
       "id": "oil",
       "name": "Olive oil",
       "quantity": {
-        "text": "1 US tbsp",
-        "value": 1,
-        "unit": "tbsp_us"
+        "text": "14.787 ml",
+        "value": 14.78676478125,
+        "unit": "ml"
       }
     },
     {
@@ -93,9 +93,9 @@
         {
           "ingredientId": "oil",
           "quantity": {
-            "text": "1 US tbsp",
-            "value": 1,
-            "unit": "tbsp_us"
+            "text": "14.787 ml",
+            "value": 14.78676478125,
+            "unit": "ml"
           }
         },
         {
@@ -188,7 +188,7 @@
           "id": "oil",
           "name": "Olive oil",
           "quantity": {
-            "text": "1 US tbsp"
+            "text": "14.787 ml"
           }
         },
         {
@@ -225,7 +225,7 @@
           "ingredientUses": [
             {
               "quantity": {
-                "text": "1 US tbsp"
+                "text": "14.787 ml"
               },
               "ingredientId": "oil"
             },
@@ -311,7 +311,7 @@
           "id": "oil",
           "name": "Aceite de oliva",
           "quantity": {
-            "text": "1 cucharada estadounidense"
+            "text": "14.787 ml"
           }
         },
         {
@@ -348,7 +348,7 @@
           "ingredientUses": [
             {
               "quantity": {
-                "text": "1 cucharada estadounidense"
+                "text": "14.787 ml"
               },
               "ingredientId": "oil"
             },
@@ -434,7 +434,7 @@
           "id": "oil",
           "name": "Olivový olej",
           "quantity": {
-            "text": "1 americká lžíce"
+            "text": "14.787 ml"
           }
         },
         {
@@ -471,7 +471,7 @@
           "ingredientUses": [
             {
               "quantity": {
-                "text": "1 americká lžíce"
+                "text": "14.787 ml"
               },
               "ingredientId": "oil"
             },

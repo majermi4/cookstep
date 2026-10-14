@@ -16,7 +16,7 @@ test('shopping keeps sizes and rounds fractional whole purchases up without chan
 test('shopping leaves qualitative, missing and ambiguous quantities explicit',()=>{
   assert.deepEqual(shoppingQuantity({quantity:{text:'to taste'}},2,'metric'),{text:'to taste',notes:['Not scaled']});
   assert.deepEqual(shoppingQuantity({},1,'metric'),{text:'Amount not specified',notes:['Check the source']});
-  assert.ok(shoppingQuantity({quantity:{text:'2 cups',value:2,unit:'cup'}},2,'metric').notes.some(n=>n.includes('unknown')));
+  assert.equal(shoppingQuantity({quantity:{text:'2 cups',value:2,unit:'cup'}},2).text,'Amount needs metric clarification');
 });
 test('people scaling requires an explicit serving relationship and copied lists include optional checks and notes',()=>{
   const recipe={id:'test',title:'Lunch',yield:{quantity:20,unit:'quesadillas'},servings:10,ingredients:[

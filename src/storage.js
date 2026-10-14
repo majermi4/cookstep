@@ -1,7 +1,11 @@
+import {metricSnapshot} from './metric.js';
 import {cleanRecordTitle} from './model.js';
 let db;
+let opening;
 export async function database() {
+  if(opening)return opening;
   if (db) return db;
+  opening=(async()=>{
   db = await new Promise((resolve,reject) => {
     const request = indexedDB.open('cookstep',3);
     request.onupgradeneeded = () => { for(const name of ['recipes','sessions','sync','shopping']) if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:'id'}); };
@@ -9,17 +13,32 @@ export async function database() {
     request.onerror = () => reject(request.error);
     request.onblocked = () => reject(new Error('Close other Cookstep tabs and try again.'));
   });
+  await new Promise((resolve,reject)=>{
+    const transaction=db.transaction(['recipes','sessions','shopping'],'readwrite');
+    for(const name of ['recipes','sessions','shopping']){
+      const request=transaction.objectStore(name).openCursor();
+      request.onsuccess=()=>{const cursor=request.result;if(!cursor)return;
+        const original=cursor.value,clean=name==='recipes'?cleanRecordTitle(original):metricSnapshot(original);
+        if(JSON.stringify(clean)!==JSON.stringify(original))cursor.update(clean);
+        cursor.continue();
+      };
+    }
+    transaction.oncomplete=resolve;transaction.onerror=()=>reject(transaction.error);transaction.onabort=()=>reject(transaction.error);
+  });
   return db;
+  })().catch(error=>{db=undefined;opening=undefined;throw error;});
+  return opening;
 }
 export async function read(store,key) {
   const databaseInstance = await database();
   return new Promise((resolve,reject) => { const r = databaseInstance.transaction(store).objectStore(store)[key === undefined ? 'getAll' : 'get'](key); r.onsuccess = () => {
-    const clean=value=>store==='recipes'?cleanRecordTitle(value):store==='sessions'&&value?.record?{...value,record:cleanRecordTitle(value.record)}:value;
+    const clean=value=>store==='recipes'?cleanRecordTitle(value):['sessions','shopping'].includes(store)?metricSnapshot(value):value;
     resolve(Array.isArray(r.result)?r.result.map(clean):clean(r.result));
   }; r.onerror = () => reject(r.error); });
 }
 export async function write(store,record) {
   if(store==='recipes')return changeRecipe(record);
+  if(typeof record!=='string'&&['sessions','shopping'].includes(store))record=metricSnapshot(record);
   const databaseInstance = await database();
   return new Promise((resolve,reject) => {
     const t = databaseInstance.transaction(store,'readwrite');
@@ -90,7 +109,7 @@ export function applyRemote(meta,record) {
     const pending=queue.get(meta.id);
     pending.onsuccess=()=>{if(pending.result)return;
       if(meta.deleted)recipes.delete(meta.id);
-      else recipes.put({...record,cloudRevision:meta.revision});
+      else recipes.put({...cleanRecordTitle(record),cloudRevision:meta.revision});
     };
   });
 }
@@ -99,7 +118,7 @@ export function resolveConflict(operation,copy) {
     const pending=queue.get(operation.id);
     pending.onsuccess=()=>{if(pending.result?.token!==operation.token)return;
       queue.delete(operation.id);
-      if(copy){recipes.put(copy);queue.put({id:copy.id,operation:'put',token:crypto.randomUUID(),expectedRevision:null});}
+      if(copy){copy=cleanRecordTitle(copy);recipes.put(copy);queue.put({id:copy.id,operation:'put',token:crypto.randomUUID(),expectedRevision:null});}
     };
   });
 }

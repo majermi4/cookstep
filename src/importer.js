@@ -1,3 +1,4 @@
+import {metricRecipe} from './metric.js';
 import {unzip, strFromU8} from './vendor/fflate.js';
 import {validateRecipe,LIMITS,safePath} from './model.js';
 
@@ -31,6 +32,7 @@ export async function importPackage(file) {
   } else throw new Error('Choose a .json file or a .zip recipe package.');
   const errors = validateRecipe(recipe,files ? new Set(Object.keys(files)) : null);
   if (errors.length) { const error = new Error('Please correct the package before importing.'); error.details = errors; throw error; }
+  recipe=metricRecipe(recipe,{strict:true});
   for (const im of recipe.images || []) {
     const data = files[im.path], type = imageMime(data);
     if (!type) throw new Error(`${im.path}: file is not a supported JPEG, PNG or WebP image.`);

@@ -33,7 +33,7 @@ Store recipes supplied by the user and guide them through cooking with a focused
 - The primary cooking device is an iPad using Chrome or Brave.
 - Countdown completion requires a prominent visual alert and sound while the app is open. Background or lock-screen alerts are not required.
 - Let the user change the recipe's servings or item yield and scale ingredient quantities in the app.
-- Allow metric/imperial unit conversion for structured measurements.
+- Store and display metric measurements only, converting recognized legacy input on ingestion.
 - Correct recipes externally through the AI preparer and re-import them; a recipe editor is deferred.
 
 ## Core experience
@@ -76,13 +76,13 @@ The interface should keep both the current instruction and active timers easy to
 
 ### Unit conversion
 
-- Provide original, metric, and imperial display choices. Apply the selection consistently to ingredient totals and quantities shown in steps.
+- Use metric quantities consistently in ingredient totals, steps, shopping lists, exports and translations. There is no measurement-system selector.
 - Convert structured cooking temperatures when supplied in the package. Preserve qualitative heat settings such as “medium-low.”
 - Keep conversions within the same measurement dimension: mass to mass, volume to volume, and temperature to temperature.
 - Do not infer grams from cups without ingredient-specific conversion data. This is outside the first-version automatic conversion scope.
 - Require an unambiguous source unit for conversion. Cups, fluid ounces, tablespoons, and teaspoons must identify their measurement convention when variants exist.
-- Preserve imported values and visibly identify quantities that cannot be converted reliably. Countable ingredients, text-only quantities, and ambiguous alternatives retain their meaning.
-- Derive conversions and scaling from original structured values, rounding only for display so repeated toggles do not accumulate errors.
+- Reject new measurements that cannot be converted reliably; request a clarified metric amount. Countable ingredients and qualitative amounts retain their meaning.
+- Convert once on ingestion and scale the stored metric values, rounding only for display.
 - The import guide must tell the AI preparer how to supply unambiguous units and structured temperatures.
 
 ### Recipe import
@@ -187,7 +187,7 @@ The interface should keep both the current instruction and active timers easy to
 12. Primary cooking browsers: Chrome and Brave on iPad.
 13. Alerts: visual and sound while the app is open; background or lock-screen alerts are not required.
 14. Scaling: change servings or item yield in the app and scale ingredient quantities.
-15. Units: support metric/imperial display conversion.
+15. Units: metric-only storage and display; one-way legacy migration.
 16. Editing: external package corrections and re-import; an in-app recipe editor is deferred.
 
 ### Implementation checks
@@ -231,8 +231,8 @@ Deferred: native apps, sign-in and synchronization, household sharing, voice con
 - On the target iPad browsers, an expired countdown produces the agreed visual and sound alert while the cooking app is open.
 - Changing a recipe's yield from its original amount to twice that amount scales both ingredient totals and per-step quantities, preserving qualitative amounts and leaving timer durations unchanged.
 - Changing yield repeatedly always derives quantities from the imported base recipe.
-- Metric/imperial switching updates ingredient totals and per-step quantities consistently and does not alter the imported recipe or accumulate rounding errors.
-- Structured temperatures convert between Celsius and Fahrenheit, while qualitative heat settings remain unchanged.
+- Legacy migration converts ingredient totals, step quantities, prose, translations and saved snapshots to metric without changing timers or progress.
+- Structured and literal source temperatures convert to Celsius, while qualitative heat settings remain unchanged.
 - Ambiguous units and mass/volume conversions without ingredient-specific data preserve the source amount instead of displaying an invented conversion.
 - A corrected package with an existing ID can replace the saved recipe through import without a recipe editor; an active session retains its original snapshot.
 

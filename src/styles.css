@@ -3,7 +3,7 @@
 .shopping-heading{margin:var(--space-24) 0}
 .shopping-heading h1{font-size:var(--text-33);margin:var(--space-10) 0}
 .shopping-heading h2{font-size:var(--text-21);margin-bottom:var(--space-10);overflow-wrap:anywhere}
-.shopping-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-16)}
+.shopping-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-16)}
 .shopping-settings input,.shopping-settings select{width:100%;min-height:48px;min-width:0;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:var(--radius-control);padding:var(--space-10)}
 .shopping-settings>p{grid-column:1/-1}
 .shopping-settings-panel summary{display:flex;align-items:center;justify-content:space-between;gap:var(--space-12);flex-wrap:wrap;font-size:var(--text-14)}
@@ -26,7 +26,7 @@
 .saved-shopping-link{display:flex;align-items:center;justify-content:space-between;gap:var(--space-16);width:100%;min-height:64px;padding:var(--space-12) 0;border:0;border-top:1px solid var(--line);background:transparent;text-align:left}
 .saved-shopping-link strong,.saved-shopping-link small{display:block;overflow-wrap:anywhere}
 .saved-shopping-link small{color:var(--text-muted);margin-top:var(--space-5);font-size:var(--text-12)}
-@media(max-width:600px){.shopping-page{padding:var(--space-20) var(--space-14) var(--space-40)}.shopping-settings{grid-template-columns:1fr 1fr}.shopping-settings>div:last-of-type{grid-column:1/-1}.shopping-item{grid-template-columns:28px minmax(0,1fr);gap:var(--space-10)}.shopping-item .amount{grid-column:2;text-align:left}.saved-shopping .section-heading{align-items:start;flex-wrap:wrap}}
+@media(max-width:600px){.shopping-page{padding:var(--space-20) var(--space-14) var(--space-40)}.shopping-settings{grid-template-columns:1fr 1fr}.shopping-item{grid-template-columns:28px minmax(0,1fr);gap:var(--space-10)}.shopping-item .amount{grid-column:2;text-align:left}.saved-shopping .section-heading{align-items:start;flex-wrap:wrap}}
 .header{height:92px;display:flex;align-items:center;justify-content:space-between;padding:0 5%;border-bottom:1px solid var(--line);gap:var(--space-24)}
 .brand{border:0;background:none;font-family:var(--font-heading);letter-spacing:-1.2px;font-size:var(--text-29);font-weight:800;display:flex;align-items:center;gap:var(--space-9);padding:0}
 .brand-dot{color:var(--accent);margin-left:calc(var(--space-9) * -1)}

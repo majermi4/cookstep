@@ -64,11 +64,11 @@ Preserve alternatives as text when they cannot be represented faithfully as one 
 
 ### Unit conversion data
 
-The app supports metric/imperial display conversion for recognized structured measurements. Use explicit unit codes for mass (`g`, `kg`, `oz`, `lb`) and volume (`ml`, `l`, `fl_oz_us`, `fl_oz_uk`, `cup_us`, `cup_metric`, `tbsp_us`, `tbsp_metric`, `tbsp_au`, `tsp_us`, `tsp_metric`). These codes identify measurement conventions; exact factors and rounding will be fixed in the implementation's unit registry.
+Cookstep stores and displays metric measurements only. Use mass codes `g` and `kg`, volume codes `ml` and `l`, length codes `mm`, `cm` and `m`, and structured temperatures in `C`. Convert every source measurement before preparation, including ingredient totals, ingredientUses, equipment sizes, instruction prose, notes and all EN/ES/CZ translations. Prefer the publisher's original metric values, especially for dry ingredients. There is no measurement preference or system selector.
 
-Use `piece` or an appropriate count label for countable ingredients; these scale but do not convert. A generic unit such as `cup` or `tbsp` can preserve an ambiguous source quantity and still scale numerically, but must not be converted as if its convention were known. The preparer should resolve the convention from reliable source information when possible; otherwise retain it and explain the ambiguity in notes. Do not guess a convention from an ingredient name.
+Use `piece` or an appropriate count label for countable ingredients. Preserve qualitative amounts such as “to taste.” Counts scale without conversion. Resolve source conventions from reliable source information; if a measurement cannot be converted reliably, obtain a clarified metric amount before saving. Do not guess ingredient density.
 
-Conversions preserve measurement dimension. Do not infer ingredient density or convert cups to grams. The app converts structured quantities rather than rewriting literal measurements in instruction prose.
+Legacy packages with explicit known source conventions are converted once during import. Ambiguous measurements are rejected before saving. Conversions preserve dimension and full calculation precision; values round only for display. Stored records, exports, active snapshots and shopping lists contain metric amounts.
 
 ### Steps
 
@@ -81,7 +81,7 @@ Each step requires a unique `id`, a short `title`, and an `instruction`. Optiona
 | `imageIds` | Array of image identifiers relevant to this step. |
 | `timers` | Array of explicit timer suggestions, defined below. |
 | `completionCue` | Legacy optional field, accepted for compatibility but not displayed. Put an essential doneness cue in `instruction` instead. |
-| `temperature` | Optional `{value, unit}` cooking temperature, with numeric `value` and unit `C` or `F`, displayed alongside the instruction and convertible between systems. |
+| `temperature` | Optional `{value, unit}` cooking temperature, with numeric `value` and unit `C`, displayed alongside the instruction. |
 | `suggestedComponentIds` | Valid component IDs offered as useful tasks during this step. |
 | `sourceIds` | Valid source IDs supporting this step. |
 | `notes` | Legacy optional step field, accepted but not displayed. Omit it in new packages; put essential prerequisites in `instruction` and unresolved source gaps in recipe-level notes. |
@@ -90,7 +90,7 @@ Instructions must be clear and to the point: use one to three short, direct sent
 
 Put scalable amounts in `ingredientUses.quantity` and refer to the displayed ingredients in the instruction, instead of repeating literal amounts in prose. The app does not rewrite numbers inside prose. This prevents the instruction from contradicting its scaled ingredient list.
 
-For a convertible cooking temperature, use `temperature` and refer to the displayed setting in prose. Qualitative stove settings remain in prose. Literal temperatures embedded only in prose are preserved and not automatically converted.
+Use Celsius in `temperature` and refer to the displayed setting in prose. Qualitative stove settings remain in prose. Convert any literal temperatures in prose to Celsius as well.
 
 ### Timers
 
@@ -181,7 +181,7 @@ New recipes and edits through ChatGPT must include complete `translations.en`, `
 
 Each overlay mirrors only the display fields of the canonical recipe. Recipe root: `title`, optional `description`, `yield: {unit}`, `equipment`, `notes`. Keep complete arrays for `components`, `ingredients`, `steps`, `sources` and `images` when present. Their entries retain `id` and supply their display strings: component `title`/`description`; ingredient `name`/`notes`/`quantity: {text}`; step `title`/`instruction`/`completionCue`/`notes`, `ingredientUses` and `timers`; source `title`; image `alt`/`caption`. Ingredient uses retain `ingredientId` and an optional `quantity: {text}`; timers retain `id` and translate `label` and `startLabel`. Equipment and note arrays keep the same ordering and length. Include every text field that exists in the base recipe.
 
-The recipe ID is shared and omitted from the overlay root. IDs inside arrays identify the canonical entries and must remain unchanged. Array order follows the canonical manifest; display matches entries by ID so view generation does not alter progress. Keep `language` as the canonical prose language. Do not put numeric amounts/ranges, machine unit codes, temperature values, timer modes/durations, paths, URLs, authors, source quotations or references in overlays. A translated quantity such as `2 cucharadas` still uses the canonical `value: 2` and `unit: "tbsp_metric"` for scaling.
+The recipe ID is shared and omitted from the overlay root. IDs inside arrays identify the canonical entries and must remain unchanged. Array order follows the canonical manifest; display matches entries by ID so view generation does not alter progress. Keep `language` as the canonical prose language. Do not put numeric amounts/ranges, machine unit codes, temperature values, timer modes/durations, paths, URLs, authors, source quotations or references in overlays. A translated quantity such as `30 ml` shares the canonical `value: 30` and `unit: "ml"` for scaling.
 
 ```json
 {"translations": {

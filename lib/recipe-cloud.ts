@@ -1,6 +1,7 @@
 import {env} from 'cloudflare:workers';
 import {getChatGPTUser} from '../app/chatgpt-auth';
 import {validateRecipe,LIMITS,cleanRecordTitle} from '../src/model.js';
+import {metricRecipe} from '../src/metric.js';
 export {imageMime} from './source-image.mjs';
 
 export function json(value:unknown,status=200) {
@@ -35,7 +36,7 @@ export async function readCloudRecord(key:string) {
   const original=await object.json<any>();
   const record=cleanRecordTitle(original);
   if(record!==original){
-    // A title-only correction keeps the revision stable, so it cannot create a
+    // Deterministic measurement/title migration keeps the revision stable, so it cannot create a
     // new sync conflict. Conditional replacement preserves concurrent writes.
     await env.BUCKET!.put(key,JSON.stringify(record),{
       onlyIf:{etagMatches:object.etag},httpMetadata:object.httpMetadata,customMetadata:object.customMetadata,
@@ -48,6 +49,7 @@ export async function validatePayload(data:any,user:string,id:string) {
   let errors;
   try{errors=validateRecipe(data.recipe,new Set((data.recipe.images||[]).map((im:any)=>im.path)));}catch{throw new CloudError('Invalid recipe manifest.');}
   if(errors.length)throw new CloudError(errors[0]);
+  try{data={...data,recipe:metricRecipe(data.recipe,{strict:true})};}catch(error){throw new CloudError((error as Error).message);}
   if(JSON.stringify(data.recipe).length>LIMITS.json)throw new CloudError('Recipe manifest is too large.',413);
   const assets:Record<string,unknown>={};let total=0;
   for(const image of data.recipe.images||[]){

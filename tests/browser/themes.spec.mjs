@@ -32,7 +32,7 @@ test('themes remain selected across navigation and reload, and keyboard selectio
 test('live switches retain the same cooking DOM, recipe snapshot, completion, batches and timer timestamps',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await saveExample(page);await page.locator('#target').fill('4');await page.locator('#target').press('Tab');
-  await page.locator('#units').selectOption('metric');await click(page,'start');
+  await expect(page.locator('#units')).toHaveCount(0);await click(page,'start');
   await click(page,'next');await page.locator('.task-button[data-id="sauce"]').click();
   await page.getByRole('checkbox',{name:'Chopped tomatoes prepared'}).check();
   await page.locator('.timer-panel-heading').click();await page.locator('#batch-name').fill('First pan');await click(page,'start-timer');

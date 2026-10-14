@@ -68,7 +68,7 @@ test('all steps scroll preserves timers, independent completion and the selected
 test('large ingredient checkboxes persist per step across tasks, views and reloads',async({page})=>{
   const recipe=structuredClone(sample);recipe.steps.at(-1).ingredientUses=[{ingredientId:'tomatoes',quantity:{text:'100 g',value:100,unit:'g'}}];
   await page.goto('/');await upload(page,recipe);await click(page,'save-import');
-  await page.locator('#target').fill('4');await page.locator('#target').press('Tab');await page.locator('#units').selectOption('metric');await click(page,'start');
+  await page.locator('#target').fill('4');await page.locator('#target').press('Tab');await expect(page.locator('#units')).toHaveCount(0);await click(page,'start');
   await page.locator('.task-button[data-id="sauce"]').click();
   const tomatoes=page.getByRole('checkbox',{name:'Chopped tomatoes prepared',exact:true}),oil=page.getByRole('checkbox',{name:'Olive oil prepared',exact:true});
   await expect(page.locator('.step-ingredient-box')).toContainText('800 g');
@@ -120,7 +120,7 @@ test('compact cooking header keeps instructions near the top and options remain 
   await page.setViewportSize({width:1440,height:1000});await page.reload();await click(page,'resume');await expect(page.locator('.cooking-top')).toHaveCount(1);await page.screenshot({path:'artifacts/cooking-minimal-desktop.png',fullPage:true});
   await page.locator('.task-button[data-id="sauce"]').click();await click(page,'start-timer');
   await click(page,'cooking-menu');
-  await expect(page.getByRole('dialog')).toContainText('2 servings · As written');
+  await expect(page.getByRole('dialog')).toContainText('2 servings · Metric');
   await expect(page.locator('#wake-status')).toBeVisible();await expect(page.locator('.sound-status')).toBeVisible();
   await page.keyboard.press('ArrowRight');await expect(page.getByRole('heading',{name:'Simmer the sauce'})).toBeVisible();
   await click(page,'sound');await expect(page.getByRole('dialog')).toBeVisible();
@@ -209,7 +209,7 @@ test('idle timers collapse, remain accessible and expand automatically for activ
 
 test('complete example import, scaling, task progress and timestamp recovery',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await saveExample(page);await page.locator('#target').fill('3');await page.locator('#target').press('Tab');await page.locator('#units').selectOption('metric');
+  await saveExample(page);await page.locator('#target').fill('3');await page.locator('#target').press('Tab');await expect(page.locator('#units')).toHaveCount(0);
   await expect(page.getByText('300 g',{exact:true}).first()).toBeVisible();await expect(page.getByText('22.18 ml',{exact:true}).first()).toBeVisible();
   await click(page,'start');await expect(page.getByRole('heading',{name:'Prepare sauce and pasta'})).toBeVisible();
   await page.locator('.task-button[data-id="sauce"]').click();await expect(page.getByRole('heading',{name:'Simmer the sauce'})).toBeVisible();await expect(page.locator('.step-ingredient-box')).toContainText('600 g');

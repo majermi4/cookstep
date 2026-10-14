@@ -22,7 +22,7 @@ test('scaled shopping checklist persists, filters, resets and stays independent 
   await expect(row(page,'tomatoes').locator('.amount>strong')).toHaveText('800 g');
   await expect(row(page,'salt')).toContainText('Not scaled');
   await check(page,'pasta').check();await expect(page.locator('#shopping-status')).toContainText('1 of 4');
-  await page.locator('#shopping-units').selectOption('imperial');await expect(check(page,'pasta')).toBeChecked();
+  await expect(page.locator('#shopping-units')).toHaveCount(0);await expect(check(page,'pasta')).toBeChecked();
   await page.getByRole('button',{name:'Copy list',exact:true}).click();
   expect(await page.evaluate(()=>navigator.clipboard.readText())).toContain('[x] Dried pasta');
   await page.reload();await page.getByRole('button',{name:/Simple tomato pasta.*4 servings.*1\/4 essentials/}).click();

@@ -1,5 +1,6 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Amount needs metric clarification": ["La cantidad necesita aclaración en unidades métricas", "Množství je potřeba upřesnit v metrických jednotkách"],
   "Cookstep — a little calm in the kitchen": ["Cookstep — un poco de calma en la cocina", "Cookstep — trocha klidu v kuchyni"],
   "Screen wake not active": [
     "Pantalla activa no habilitada",
@@ -125,10 +126,6 @@ export const messages = {
     "Rendimiento de la receta ({0})",
     "Výtěžnost receptu ({0})"
   ],
-  "Measurements": [
-    "Medidas",
-    "Míry"
-  ],
   "Changing amounts clears purchase checks. Ingredient sizes and notes are shown below.": [
     "Cambiar cantidades borra las marcas de compra. Los tamaños y notas están abajo.",
     "Změna množství vymaže nákupní značky. Velikosti surovin a poznámky jsou níže."
@@ -157,17 +154,9 @@ export const messages = {
     "¿Cuántas unidades de {0}?",
     "Kolik: {0}?"
   ],
-  "As written": [
-    "Como está escrito",
-    "Podle receptu"
-  ],
   "Metric": [
     "Métrico",
     "Metrické"
-  ],
-  "Imperial (US volume)": [
-    "Imperial (volumen de EE. UU.)",
-    "Imperiální (americký objem)"
   ],
   "· People per recipe are not specified; choose the recipe yield.": [
     "· No se indica cuántas personas sirve; elige el rendimiento.",
@@ -484,10 +473,6 @@ export const messages = {
   "Original recipe: {0}{1}": [
     "Receta original: {0}{1}",
     "Původní recept: {0}{1}"
-  ],
-  "Display measurements": [
-    "Mostrar medidas",
-    "Zobrazené míry"
   ],
   "Amounts scale. Cooking times stay the same.": [
     "Las cantidades se ajustan. Los tiempos de cocción se mantienen.",
@@ -1005,10 +990,6 @@ export const messages = {
     "Todos los pasos · desplazar",
     "Všechny kroky · posouvání"
   ],
-  "Imperial": [
-    "Imperial",
-    "Imperiální"
-  ],
   "Overview": [
     "Resumen",
     "Přehled"
@@ -1245,10 +1226,6 @@ export const messages = {
     "Cantidad fuera del rango admitido",
     "Množství překračuje podporované rozmezí"
   ],
-  "Unit convention unknown · not converted": [
-    "Convención de unidad desconocida · sin convertir",
-    "Neznámá definice jednotky · nepřevedeno"
-  ],
   "Recipe library options": [
     "Opciones de biblioteca",
     "Možnosti knihovny"
@@ -1292,46 +1269,6 @@ export const messages = {
   "chillies": [
     "ajíes",
     "chilli papriček"
-  ],
-  "cup": [
-    "taza",
-    "hrnek"
-  ],
-  "US cups": [
-    "tazas de EE. UU.",
-    "amerických hrnků"
-  ],
-  "metric cups": [
-    "tazas métricas",
-    "metrických hrnků"
-  ],
-  "US tbsp": [
-    "cucharadas de EE. UU.",
-    "americké lžíce"
-  ],
-  "metric tbsp": [
-    "cucharadas métricas",
-    "metrické lžíce"
-  ],
-  "Australian tbsp": [
-    "cucharadas australianas",
-    "australské lžíce"
-  ],
-  "US tsp": [
-    "cucharaditas de EE. UU.",
-    "americké lžičky"
-  ],
-  "metric tsp": [
-    "cucharaditas métricas",
-    "metrické lžičky"
-  ],
-  "US fl oz": [
-    "oz líquidas de EE. UU.",
-    "americké tekuté oz"
-  ],
-  "UK fl oz": [
-    "oz líquidas británicas",
-    "britské tekuté oz"
   ],
   "Translation missing for this language; showing the original recipe.": [
     "Falta la traducción a este idioma; se muestra la receta original.",
