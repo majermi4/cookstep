@@ -432,3 +432,27 @@
   [data-layout="studio"] .current-step:not(.scroll-step) .step-top{position:static;display:flex}
   [data-layout="studio"] .current-step:not(.scroll-step) .step-top .eyebrow{display:block}
 }
+/* On phones, use one text gutter and let the card surfaces and photos span it. */
+@media(max-width:600px){
+  .library-page,.overview-page,.shopping-page,.cooking-page{padding-left:16px;padding-right:16px}
+  .recipe-grid,[data-layout="studio"] .recipe-grid{grid-template-columns:minmax(0,1fr)}
+  .recipe-grid,.empty-library,.resume-banner,.saved-shopping,.overview-heading,.overview-grid,.cooking-grid{margin-left:-16px;margin-right:-16px}
+  .recipe-card,[data-layout] .recipe-card,.empty-library,[data-layout] .empty-library,.resume-banner,.saved-shopping,
+  .overview-heading,[data-layout] .overview-heading.has-cover,
+  .overview-grid .panel,.shopping-page .panel,.current-step,[data-layout] .current-step,.timer-panel{
+    border-left:0;border-right:0;border-radius:0;
+  }
+  .card-content,[data-layout] .card-content,.empty-copy,.resume-banner,.saved-shopping,
+  .overview-title,[data-layout] .overview-title,.overview-grid .panel,
+  .shopping-page .panel,.current-step,[data-layout] .current-step,.timer-panel{padding-left:16px;padding-right:16px}
+  .overview-heading,[data-layout] .overview-heading.has-cover{padding-left:0;padding-right:0}
+  .recipe-card .cover,[data-layout] .recipe-card .cover,
+  .overview-heading>.cover,[data-layout] .overview-heading>.cover{border-radius:0}
+  .prep-sidebar{grid-template-columns:minmax(0,1fr)}
+  .shopping-page .panel{margin-left:-16px;margin-right:-16px}
+  .recipe-grid>.muted{padding-left:16px;padding-right:16px}
+  .cooking-page .tasks{padding-left:16px;padding-right:16px}
+  [data-layout] .current-step.has-media .step-media{align-self:stretch;margin-left:-16px!important;margin-right:-16px!important}
+  .step-media .step-image,.step-media img,[data-layout] .step-media .step-image,[data-layout] .step-media img{border-radius:0}
+  .cooking-page:not(.all-steps-view) .step-footer{left:0;right:0;padding-left:16px;padding-right:16px;border-left:0;border-right:0;border-radius:0}
+}
