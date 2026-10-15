@@ -10,11 +10,18 @@ async function rpc(page,name,args={}){if(name==='save_recipe'&&args.recipe){cons
 test('ChatGPT recipe tools save to the browser library, preserve images and sessions, and reject stale edits',async({page,request})=>{
   const discovery=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'server/discover'}});expect((await discovery.json()).result.supportedVersions).toContain('2026-07-28');
   const list=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'tools/list'}});const tools=(await list.json()).result.tools;expect(tools.map(t=>t.name)).toEqual(expect.arrayContaining(['save_recipe','import_recipe_image']));expect(tools.find(t=>t.name==='get_recipe_format').description).toContain('complete');
+  const uploadTool=tools.find(t=>t.name==='upload_recipe_image');
+  expect(uploadTool._meta['openai/fileParams']).toEqual(['file']);
+  expect(uploadTool.inputSchema.properties.file.required).toEqual(['download_url','file_id']);
+  expect(uploadTool.inputSchema.properties.url.type).toBe('string');
   const noAuth=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'list_recipes',arguments:{}}}});expect(noAuth.status()).toBe(401);
   await page.goto('/signin-with-chatgpt?return_to=%2F');await expectSync(page,'Recipes synced across devices');
   const format=await rpc(page,'get_recipe_format');expect(format.data.result.structuredContent.example.formatVersion).toBe('0.2');
   const guide=await readFile(new URL('../../AI_RECIPE_GUIDE.md',import.meta.url),'utf8');expect(format.data.result.structuredContent.preparationGuide).toBe(guide);
   for(const url of ['https://127.0.0.1/private','https://localhost/private','file:///private'])expect((await rpc(page,'import_recipe_image',{url})).data.result.isError).toBe(true);
+  for(const args of [{file:{file_id:'file-test'}},{file:{file_id:'file-test',download_url:'/mnt/data/image.png'}},{url:'https://127.0.0.1/private'},{url:'https://public.com/image.png',base64}]){
+    expect((await rpc(page,'upload_recipe_image',args)).data.result.isError).toBe(true);
+  }
   const uploaded=await rpc(page,'upload_recipe_image',{base64});const asset=uploaded.data.result.structuredContent;
   const recipe={...structuredClone(sample),id:crypto.randomUUID(),title:'ChatGPT test '+crypto.randomUUID(),images:[{id:'photo',path:'images/test.png',alt:'Test image',origin:'user_supplied',kind:'photo'}],coverImageId:'photo'};
   const mutationId=crypto.randomUUID();
