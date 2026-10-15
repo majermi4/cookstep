@@ -1,112 +1,118 @@
-# Cookstep
+<p align="center">
+  <img src="public/favicon.svg" width="64" height="64" alt="Cookstep cooking pot">
+</p>
 
-A shared browser recipe library and cooking guide built from PRODUCT_SPEC.md. Everyone invited to this private Cookstep Site uses the same recipe collection and can add, update and delete recipes. Recipes and their bundled images sync through ChatGPT Sites D1 and R2 storage. IndexedDB keeps local recipe copies and a durable queue for interrupted uploads. Active-session snapshots, cooking progress, shopping lists, timer timestamps and preferences stay on each device.
+<h1 align="center">Cookstep</h1>
 
-## Run locally
+<p align="center"><strong>A little calm in the kitchen.</strong></p>
 
-Requires Node 22+.
+<p align="center">Your recipes, a clear next step, and a timer for every pan.<br>Built for the moment your hands are busy and three things are cooking at once.</p>
+
+<p align="center">
+  <a href="#try-it-locally">Try it locally</a> ·
+  <a href="https://cookstep-recipe-guide.alightslug4.chatgpt.site/">Recipe preparation guide</a> ·
+  <a href="docs/DEVELOPMENT.md">Developer guide</a>
+</p>
+
+![Cookstep cooking view with an illustrated recipe step, separate dish tabs, ingredient checks, and two running timers](docs/screenshots/cooking-editorial-cookbook.png)
+
+The filling is browning. The sauce needs a stir. You’ve lost your place in the recipe again.
+
+Cookstep gives each part of a meal its own place. Switch between the main dish and sides, keep every timer in sight, and return to the exact step you left. Add or update recipes through ChatGPT, then put the screen on your kitchen counter and cook.
+
+## From “what’s for dinner?” to dinner
+
+1. **Bring a recipe you love.** Give ChatGPT a recipe link, text, or photo and ask it to prepare and save it through the Cookstep connection. JSON and ZIP import are also available.
+2. **Make it fit your table.** Adjust the yield, check the ingredients and equipment, and create a shopping list with scaled amounts.
+3. **Cook one step at a time.** Follow the main guide or work on a side dish. Check off prep, start a timer when the food actually hits the pan, and mark steps done yourself.
+4. **Pick up where you left off.** Cooking progress and timer timestamps stay on your device across reloads. In the hosted app, your recipe library and images sync across devices.
+
+## Made for cooking, not just collecting recipes
+
+| At the counter | How Cookstep helps |
+| --- | --- |
+| A meal with several moving parts | Separate component tabs remember your position and progress. |
+| Two pans and another batch to go | Named countdowns and elapsed timers stay visible while you switch tasks. |
+| A recipe for two, dinner for six | Scaled ingredient amounts and shopping lists, with ingredient notes kept alongside. |
+| A tablet covered in fingerprints | Large controls, readable steps, optional fullscreen, and screen wake lock where supported. |
+| An unreliable kitchen connection | An installable PWA with saved recipes, images, lists, and cooking progress available offline after the initial download. |
+| A recipe worth keeping | ZIP exports preserve the recipe and its images together. Export your whole library too. |
+
+**English, Spanish, and Czech.** Switch the interface language on any page, including while cooking. Prepared recipes support all three translations under the same recipe ID.
+
+**Practical quantities.** Metric amounts and Celsius throughout, with spoon measures and approximate grams together for spices.
+
+## A recipe book that comes to the counter
+
+![Recipe overview showing the finished dish, adjustable yield, grouped ingredients, and cooking controls](docs/screenshots/recipe-overview.png)
+
+Keep the whole meal in view before you begin: a cover image, source links, the right amounts, and the equipment you’ll need.
+
+<table>
+  <tr>
+    <th>At the stove</th>
+    <th>At the supermarket</th>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/cooking-phone.png" alt="Cookstep on a phone, showing the current cooking step and persistent timer controls"></td>
+    <td width="50%"><img src="docs/screenshots/shopping-phone.png" alt="Cookstep phone shopping list with scaled quantities and checked ingredients"></td>
+  </tr>
+</table>
+
+## Four ways to feel at home
+
+Choose a look that suits your kitchen. Change themes while cooking; your steps, checks, and timers stay put.
+
+<table>
+  <tr><th>Editorial Cookbook</th><th>Cozy Illustrated</th></tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/cooking-editorial-cookbook.png" alt="Editorial Cookbook theme with warm paper tones and serif typography"></td>
+    <td width="50%"><img src="docs/screenshots/cooking-cozy-illustrated.png" alt="Cozy Illustrated theme with soft sage accents and rounded controls"></td>
+  </tr>
+  <tr><th>Kitchen Appliance</th><th>Recipe Studio</th></tr>
+  <tr>
+    <td><img src="docs/screenshots/cooking-kitchen-appliance.png" alt="Kitchen Appliance theme with dark surfaces and copper timer accents"></td>
+    <td><img src="docs/screenshots/cooking-recipe-studio.png" alt="Recipe Studio theme with a photographic canvas and thumbnail step navigation"></td>
+  </tr>
+</table>
+
+## Recipes, straight from ChatGPT
+
+With the hosted Cookstep connection enabled, try:
+
+> “Add this recipe to Cookstep for four people, with a shopping list and separate steps for the sauce.”
+
+> “Update my quesadilla recipe to use less cheese and keep the existing photos.”
+
+ChatGPT can find, read, add, and update recipes, including their images. Existing edits use revision checks to protect against overwriting a newer version. The [preparation guide](https://cookstep-recipe-guide.alightslug4.chatgpt.site/) explains how to structure a cooking-ready recipe; [the format reference](RECIPE_FORMAT.md) documents the portable JSON/ZIP contract.
+
+## Try it locally
+
+Requires **Node.js 22.13+**. Start a browser demo:
 
 ```sh
+git clone https://github.com/majermi4/cookstep.git
+cd cookstep
 npm ci
-npm run build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_harsh_big_bertha.sql
-node scripts/run-framework.mjs dev --port 4173
+npm run build:assets
+node scripts/serve.mjs
 ```
 
-Open http://127.0.0.1:4173. Sign in using the local sign-in link to test cloud storage. Local D1/R2 data is separate from production. Run the build after changing the vanilla browser code; Vinext serves its generated assets from `public/`.
+Open **http://127.0.0.1:4173** and choose **Try the example**. You can explore the cooking guide, timers, themes, shopping lists, and recipe import/export locally.
 
-## Verify
+The static demo stores your work in this browser. Cross-device recipe sync and direct ChatGPT edits require the full hosted app, which uses ChatGPT Sites identity plus Cloudflare D1/R2 storage. The existing hosted collection is private; this public repository is the source code. See the [developer guide](docs/DEVELOPMENT.md#run-locally) to run the full server locally.
 
-```sh
-npm run build
-npm test
-npm run test:browser
-```
+Timers require the app to be open for alerts; background and lock-screen notifications are not supported. Shopping lists, cooking sessions, and timers stay on each device. Physical iPhone/iPad installation, sound, and screen wake behavior still need device-specific verification.
 
-The browser tests use an isolated temporary Chrome profile; the default executable is the macOS Google Chrome installation. To use a different installed browser, set `COOKSTEP_BROWSER_PATH` to its executable. The local server must be running for browser tests.
+## Build on Cookstep
 
-Verify shared access against the production Worker with distinct simulated Sites identities after building:
+The cooking interface is vanilla JavaScript and CSS, backed by IndexedDB. The hosted server uses TypeScript, React/Vinext, Cloudflare D1 and R2, and an MCP endpoint for recipe tools. Four themes share the same cooking state and behavior.
 
-```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/sharing-tests --file drizzle/0000_harsh_big_bertha.sql
-npx playwright test --config playwright.sharing.config.mjs
-```
+- [Development, verification, and deployment](docs/DEVELOPMENT.md)
+- [Recipe preparation guide](AI_RECIPE_GUIDE.md) and [recipe format](RECIPE_FORMAT.md)
+- [Design system and theme architecture](DESIGN.md)
+- [Product specification](PRODUCT_SPEC.md)
 
-This starts a separate loopback Worker on port 4174 with isolated local storage. It tests shared browser/MCP reads, writes, images, revisions, deletions, local cooking state and missing identity. Sites invitation enforcement runs upstream of the Worker and requires hosted acceptance separately.
+Found a rough edge or have an idea that would make cooking easier? [Open an issue](https://github.com/majermi4/cookstep/issues).
 
-## What is included
-
-- ChatGPT recipe tools: find, read, add and update recipes directly in the synced library; image upload, retained images and revision conflict protection.
-- JSON and ZIP package import, version 0.2 validation, full preview and explicit save.
-- Individual recipe ZIP export and whole-library ZIP export/import, including bundled images and explicit replacement/copy choices.
-- Duplicate-ID replacement or independent copy; existing cooking sessions retain a recipe snapshot.
-- Synced recipe library and images, local caching, durable upload retries, conflict copies, synced deletions, grouped ingredients, equipment, source attribution and original text.
-- Target yield selection, numeric and range scaling, metric storage with spice spoon/gram display and Celsius temperatures. Recognized legacy measurements convert on ingestion; ambiguous new amounts require clarification.
-- Recipe shopping lists with people/yield scaling, size notes, whole-item purchase hints, optional items, remaining-item filtering, copyable lists and device-local saved purchase checks. Open **Shopping list** in a recipe; resume it from the library. Changing amounts or recipe ingredients clears checks.
-- Main guide and component tasks with independent progress and optional task suggestions.
-- Previous/Next buttons and left/right keyboard arrows browse steps without completing them; completion stays explicit.
-- The timer panel collapses when idle and opens automatically when a timer starts.
-- Compact cooking header with recipe overview, library, sound, screen status and finish controls in an options menu.
-- Fullscreen toggle and an optional continuous view of every cooking step, selected in Cooking options.
-- Four switchable themes: Editorial Cookbook, Kitchen Appliance, Cozy Illustrated and Recipe Studio. Open the gear icon → Theme; the preference stays on this device.
-- Large per-step ingredient checkboxes with preparation progress saved across views, task switches and reloads.
-- User-started countdowns, elapsed tracking, named repeated batches, manual timers and links to originating steps.
-- Visual expiry alerts, foreground sound activation, stopped-timer acknowledgement and overdue/elapsed display.
-- Responsive phone/tablet/desktop layouts, Screen Wake Lock when available, and interrupted-session recovery from saved timestamps.
-- Readable standalone AI guide, contract, downloadable example and copyable prompt. The guide deploys separately from the private app.
-
-## Package constraints
-
-25 MB compressed, 80 MB expanded, 500 ZIP entries, 2 MB manifest, 10 MB per image. Root `recipe.json` is required. Image assets must be actual JPEG, PNG or WebP bytes beneath `images/`. Unsafe paths, duplicates and unresolved references are rejected. Component ID `main` and prototype property names are reserved. See RECIPE_FORMAT.md for format details and the deployed guide for fixed factors and rounding.
-
-## Scope and verification limits
-
-Import once, wait for “Recipes synced across devices”, and open the same private Site while signed into any invited account on other devices. Existing recipes on this origin migrate automatically; open the gear icon and use Sync now or Retry sync to refresh. Library syncing runs on launch, reconnection, return to the tab and every minute while visible. Simultaneous replacements preserve a separate copy instead of overwriting another person’s edits.
-
-Sites’ invitation list controls access to the entire collection, including ChatGPT recipe tools. Invite visitors through the Site’s Share controls; everyone admitted has the same recipe permissions. The server keeps using the original owner’s Site-scoped storage key, so existing recipe IDs, revisions and image paths are unchanged. There are no membership tables or library selectors. Keep the Site private: making it public would admit other signed-in visitors to the shared collection. Removing access stops future cloud requests; previously downloaded recipes can remain on the visitor’s device.
-
-No recipe extraction, in-app recipe editing or background/lock-screen notifications. Shopping lists, cooking sessions and timers remain device-local. Changing yield is locked during cooking. Recipe quantities, instruction measurements and temperatures are metric. Scalable quantities and Celsius temperatures use structured fields.
-
-Actual iPad Chrome and Brave screen-awake, foreground sound and storage recovery require device acceptance. Desktop Chromium and responsive viewport tests do not establish iPad browser behavior. The app explicitly reports when screen wake or sound is unavailable. Browser storage can be cleared or evicted; retain original recipe packages for re-import.
-
-## Languages
-
-Open the gear icon → Language on any app page, including while cooking. The language stays on this device; switching while cooking preserves timers, progress, amounts and step position. Recipes store complete English (`en`), Spanish (`es`) and Czech (`cs`) text overlays under the same stable ID. Numeric quantities, unit codes, references, source quotations and images remain shared. ZIP exports and cloud sync retain all three locales. Older imported recipes without translations remain readable in their original language; use ChatGPT to translate them.
-
-The preparation guide, copied add/edit prompts and recipe tools require all locales on every push. Supplied overlays are checked for complete coverage and reject changes to structural/numeric data.
-
-## Themes
-
-`src/themes.js` is the theme registry: semantic color roles, typography, radii, shadows, spacing, color scheme and a layout variant. `src/theme-scales.js` holds the shared scales and food illustration tokens. All interface styling consumes CSS custom properties. Fixed hit-target sizes, responsive breakpoints and illustration geometry are deliberately layout constraints.
-
-Add a `defineTheme(...)` entry to `THEMES`, override only the groups that differ, and run the build. The picker is generated from the registry. Reuse a layout (`editorial`, `appliance`, `illustrated`, `studio`) or add presentation rules in `src/theme-layouts.css` under a new `[data-layout]` selector. Cooking markup and event handlers stay shared.
-
-The build generates `dist/themes.css` and a small early `dist/theme-boot.js` from that same registry, so the saved theme is restored before the first paint. Runtime switches update attributes and browser chrome without re-rendering the app or saving a cooking session. `cookstep.theme` in localStorage is separate from IndexedDB recipe/session data. Unknown preferences fall back to Editorial Cookbook; blocked storage permits a temporary switch and shows that saving failed. The reference typefaces (Playfair Display, Fraunces, Inter and Caveat) are served locally with their OFL licenses under `public/fonts/`, with system fallbacks. Theme switching needs no external font service.
-
-The four compositions are documented in [DESIGN.md](DESIGN.md). Editorial pairs instructions with a large source image; Appliance emphasizes distant readability and copper timer dials; Cozy pairs photos with hand-painted artwork and sage timers; Studio uses a photographic canvas and a thumbnail step rail. Source cooking-sequence images remain fully visible. A fixed navigation dock and a timer strip keep controls reachable on smaller screens.
-
-## Structure
-
-`src/model.js` contains manifest validation, quantities and timestamp timer logic. `src/importer.js` validates and reads ZIP/JSON packages. `src/storage.js` holds IndexedDB transactions. `src/app.js` contains the interface and cooking interaction. `scripts/build.mjs` builds static app output and documentation-only `guide-site/dist/`.
-
-## Edit through ChatGPT
-
-The private Cookstep Site exposes `/mcp` through its Sites-provisioned plugin. Install or connect **Cookstep** from Plugins → Created by you, then select it in ChatGPT. Ask, for example, “Use Cookstep to change the cheese in my quesadilla recipe and save it,” or supply a recipe source and ask to add it. Return to Cookstep and open the gear icon → **Sync now**, or wait for the normal refresh.
-
-Tools: `get_recipe_format`, `list_recipes` (paginated search), `get_recipe`, `import_recipe_image` (direct public HTTPS JPEG/PNG/WebP URL), `upload_recipe_image` (native ChatGPT file reference, direct HTTPS URL, or base64 JPEG/PNG/WebP), and `save_recipe`. The format response includes the full preparation guide, not just the schema. The app's add/edit prompts and the public guide reuse the guide's canonical preparation text; direct and ZIP delivery retain the same cooking requirements.
-
-URL import downloads actual image bytes server-side, checks MIME/signature and the 10 MB limit while streaming, allows at most four validated HTTPS redirects and times out after 20 seconds. It uses the Worker's public global fetch without cookies, authorization or private bindings; IP literals, local hostnames, credentials and custom ports are rejected. Returned asset keys are scoped to the shared collection and content-addressed, with a matching suggested manifest path. Blocked or unsupported source images produce an actionable error.
-
-For generated illustrations and attached images, prefer `upload_recipe_image({file})`. Its `openai/fileParams` metadata tells ChatGPT to provide a real file object with required `download_url` and `file_id`, plus optional `mime_type` and `file_name`. `upload_recipe_image({url})` also accepts temporary signed HTTPS image links; `{base64}` remains compatible. Exactly one input is required. Downloads use the same HTTPS, redirect, size, timeout and byte validation as source imports. The original bytes are stored without resizing or recompression; temporary transport URLs and file IDs are not persisted or returned. Expired links give an actionable reattachment error. Never pass local `/mnt/data/...` paths as URLs or manufacture references. After deployment, start a fresh ChatGPT conversation if an existing chat still shows the old base64-only tool schema.
-
-Existing edits require the revision returned by `get_recipe`; new recipes use null. Retries keep the same UUID mutation ID. The server validates manifests and checks that each image belongs to the shared collection. Unchanged image IDs and paths retain their stored assets when omitted. New or changed images must be imported or uploaded first. Sites verifies visitor access before forwarding browser and MCP requests; the server also requires signed-in identity. Tools and browser sync use the same collection. No API key or local server is needed in production.
-
-**Export recipe ZIP** is in the recipe overview; **Export library ZIP** is beside Your recipes. Library archives contain a `library.json` index and numbered recipe folders, each with its original `recipe.json` and `images/`. Import validates the whole archive before preview; accepting it commits recipes and their upload queue together on the device. Export limits match import limits (25 MB compressed, 80 MB expanded, 500 files); export recipes individually when the library exceeds them. ZIPs contain recipe data and images, not cooking progress, timers or account credentials.
-
-## Install and update
-
-Cookstep is an installable PWA. Open Settings → Install Cookstep, or use the browser install menu. On iPhone/iPad, open the Site in Safari and use Share → Add to Home Screen. Sign in and allow the initial offline download to finish (Settings shows “Ready offline”). This needs a successful online visit first. Saved recipes, their downloaded images, shopping lists, cooking progress and timer timestamps remain available on that device when offline. Cloud sync and ChatGPT recipe edits require a connection. The standalone preparation guide is not precached.
-
-The build hashes the complete shipped interface, icons, fonts and service-worker implementation. Each version downloads to a separate cache and activates only when the previous app windows close or the user chooses Update now. The update banner stays disabled while a meal is active, including when browsing the library. An explicit update also checks every open app window and the persisted active session; unsaved work or an unresponsive window blocks activation. Finish cooking or close those windows and retry. No update deletes IndexedDB or local preferences. Update checks run on launch, reconnect, return to the app, hourly while visible, and from Settings. Failed downloads leave the previous version usable.
-
-Only shipped interface files are cached by the service worker. API, MCP, sign-in, and private image requests keep their normal server authentication. Previously downloaded recipes remain on the device as before; removing Site access stops future cloud requests. Installing does not add background or lock-screen timer alarms. Physical iPhone/iPad installation, private sign-in and operating-system storage behavior still require device acceptance.
+<sub>Screenshots show the real app with an adapted sample recipe. Quesadilla photography and source recipe: <a href="https://www.recipetineats.com/quesadilla/">Nagi Maehashi / RecipeTin Eats</a>. The cooking-step illustration is AI-generated.</sub>
