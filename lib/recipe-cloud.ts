@@ -4,6 +4,11 @@ import {validateRecipe,LIMITS,cleanRecordTitle} from '../src/model.js';
 import {metricRecipe} from '../src/metric.js';
 export {imageMime} from './source-image.mjs';
 
+// This private Site has one collection for everyone Sites permits to visit.
+// Keep the original Site-scoped owner's storage key so existing recipes,
+// revisions and image references remain valid without a data migration.
+const sharedRecipeOwner='FXp39bXKdHB4CkblZ0XDfiK4RrfCVnyMnX8R6lzZrvEv55sh6mLdFv';
+
 export function json(value:unknown,status=200) {
   return Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
 }
@@ -11,7 +16,7 @@ export async function owner() {
   const user=await getChatGPTUser();
   if(!user) throw new CloudError('Sign in to Cookstep to sync your recipes.',401);
   if(!env.DB || !env.BUCKET) throw new CloudError('Cloud storage is temporarily unavailable.',503);
-  return user.userId;
+  return sharedRecipeOwner;
 }
 export class CloudError extends Error {
   constructor(message:string,public status=400){super(message);}

@@ -2,6 +2,8 @@
 
 Status: first-version product spec. Implemented on 2026-10-10; see README.md and IMPLEMENTATION.md for delivery and verification. Discovery requirements remain below. Actual iPad Chrome/Brave device acceptance is pending.
 
+**Shared collection update — 2026-10-15:** Everyone invited to the private Cookstep Site uses the same recipe collection, with equal permission to add, update and delete recipes through the browser and ChatGPT tools. Sites controls visitor access. Existing recipes, revisions and image paths remain in the original storage scope; no household membership tables or library selectors are needed. Cooking sessions, progress, timers, shopping lists and preferences remain device-local. This supersedes the same-account restriction and deferred recipe sharing below.
+
 **Storage scope update — 2026-10-12:** The recipe library and bundled images now sync through the private Cookstep Site to the same signed-in account on computer, iPad and iPhone. This supersedes the local-only library and separate-import requirements below. Existing local recipes migrate automatically; interrupted writes remain in a durable local queue. Synced deletions and concurrent-replacement copies prevent accidental restoration or overwriting. Cooking sessions, progress, timers and theme preferences remain device-local. Household sharing and guaranteed offline loading remain deferred.
 
 

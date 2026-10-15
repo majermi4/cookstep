@@ -1,6 +1,6 @@
 # Cookstep
 
-A personal browser recipe library and cooking guide built from PRODUCT_SPEC.md. Recipes and their bundled images sync through ChatGPT Sites D1 and R2 storage, scoped to the signed-in account. IndexedDB keeps local recipe copies and a durable queue for interrupted uploads. Active-session snapshots, cooking progress, timer timestamps and theme preferences stay on each device.
+A shared browser recipe library and cooking guide built from PRODUCT_SPEC.md. Everyone invited to this private Cookstep Site uses the same recipe collection and can add, update and delete recipes. Recipes and their bundled images sync through ChatGPT Sites D1 and R2 storage. IndexedDB keeps local recipe copies and a durable queue for interrupted uploads. Active-session snapshots, cooking progress, shopping lists, timer timestamps and preferences stay on each device.
 
 ## Run locally
 
@@ -24,6 +24,15 @@ npm run test:browser
 ```
 
 The browser tests use an isolated temporary Chrome profile; the default executable is the macOS Google Chrome installation. To use a different installed browser, set `COOKSTEP_BROWSER_PATH` to its executable. The local server must be running for browser tests.
+
+Verify shared access against the production Worker with distinct simulated Sites identities after building:
+
+```sh
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/sharing-tests --file drizzle/0000_harsh_big_bertha.sql
+npx playwright test --config playwright.sharing.config.mjs
+```
+
+This starts a separate loopback Worker on port 4174 with isolated local storage. It tests shared browser/MCP reads, writes, images, revisions, deletions, local cooking state and missing identity. Sites invitation enforcement runs upstream of the Worker and requires hosted acceptance separately.
 
 ## What is included
 
@@ -52,7 +61,9 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 
 ## Scope and verification limits
 
-Import once, wait for “Recipes synced across devices”, and open the same private Site while signed into the same account on other devices. Existing recipes on this origin migrate automatically; open the gear icon and use Sync now or Retry sync to refresh. Library syncing runs on launch, reconnection, return to the tab and every minute while visible. Simultaneous replacements preserve a separate copy instead of overwriting another device’s edits.
+Import once, wait for “Recipes synced across devices”, and open the same private Site while signed into any invited account on other devices. Existing recipes on this origin migrate automatically; open the gear icon and use Sync now or Retry sync to refresh. Library syncing runs on launch, reconnection, return to the tab and every minute while visible. Simultaneous replacements preserve a separate copy instead of overwriting another person’s edits.
+
+Sites’ invitation list controls access to the entire collection, including ChatGPT recipe tools. Invite visitors through the Site’s Share controls; everyone admitted has the same recipe permissions. The server keeps using the original owner’s Site-scoped storage key, so existing recipe IDs, revisions and image paths are unchanged. There are no membership tables or library selectors. Keep the Site private: making it public would admit other signed-in visitors to the shared collection. Removing access stops future cloud requests; previously downloaded recipes can remain on the visitor’s device.
 
 No recipe extraction, in-app recipe editing, offline-loading guarantee or background/lock-screen notifications. Shopping lists, cooking sessions and timers remain device-local. Changing yield is locked during cooking. Recipe quantities, instruction measurements and temperatures are metric. Scalable quantities and Celsius temperatures use structured fields.
 
@@ -84,10 +95,10 @@ The private Cookstep Site exposes `/mcp` through its Sites-provisioned plugin. I
 
 Tools: `get_recipe_format`, `list_recipes` (paginated search), `get_recipe`, `import_recipe_image` (direct public HTTPS JPEG/PNG/WebP URL), `upload_recipe_image` (native ChatGPT file reference, direct HTTPS URL, or base64 JPEG/PNG/WebP), and `save_recipe`. The format response includes the full preparation guide, not just the schema. The app's add/edit prompts and the public guide reuse the guide's canonical preparation text; direct and ZIP delivery retain the same cooking requirements.
 
-URL import downloads actual image bytes server-side, checks MIME/signature and the 10 MB limit while streaming, allows at most four validated HTTPS redirects and times out after 20 seconds. It uses the Worker's public global fetch without cookies, authorization or private bindings; IP literals, local hostnames, credentials and custom ports are rejected. Returned asset keys are scoped to the signed-in owner and content-addressed, with a matching suggested manifest path. Blocked or unsupported source images produce an actionable error.
+URL import downloads actual image bytes server-side, checks MIME/signature and the 10 MB limit while streaming, allows at most four validated HTTPS redirects and times out after 20 seconds. It uses the Worker's public global fetch without cookies, authorization or private bindings; IP literals, local hostnames, credentials and custom ports are rejected. Returned asset keys are scoped to the shared collection and content-addressed, with a matching suggested manifest path. Blocked or unsupported source images produce an actionable error.
 
 For generated illustrations and attached images, prefer `upload_recipe_image({file})`. Its `openai/fileParams` metadata tells ChatGPT to provide a real file object with required `download_url` and `file_id`, plus optional `mime_type` and `file_name`. `upload_recipe_image({url})` also accepts temporary signed HTTPS image links; `{base64}` remains compatible. Exactly one input is required. Downloads use the same HTTPS, redirect, size, timeout and byte validation as source imports. The original bytes are stored without resizing or recompression; temporary transport URLs and file IDs are not persisted or returned. Expired links give an actionable reattachment error. Never pass local `/mnt/data/...` paths as URLs or manufacture references. After deployment, start a fresh ChatGPT conversation if an existing chat still shows the old base64-only tool schema.
 
-Existing edits require the revision returned by `get_recipe`; new recipes use null. Retries keep the same UUID mutation ID. The server validates manifests and checks that each image belongs to the authenticated user. Unchanged image IDs and paths retain their stored assets when omitted. New or changed images must be imported or uploaded first. User identity comes from trusted Sites forwarding, and reads/writes use the same account scope as browser sync. No API key or local server is needed in production.
+Existing edits require the revision returned by `get_recipe`; new recipes use null. Retries keep the same UUID mutation ID. The server validates manifests and checks that each image belongs to the shared collection. Unchanged image IDs and paths retain their stored assets when omitted. New or changed images must be imported or uploaded first. Sites verifies visitor access before forwarding browser and MCP requests; the server also requires signed-in identity. Tools and browser sync use the same collection. No API key or local server is needed in production.
 
 **Export recipe ZIP** is in the recipe overview; **Export library ZIP** is beside Your recipes. Library archives contain a `library.json` index and numbered recipe folders, each with its original `recipe.json` and `images/`. Import validates the whole archive before preview; accepting it commits recipes and their upload queue together on the device. Export limits match import limits (25 MB compressed, 80 MB expanded, 500 files); export recipes individually when the library exceeds them. ZIPs contain recipe data and images, not cooking progress, timers or account credentials.

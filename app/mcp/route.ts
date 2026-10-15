@@ -1,5 +1,5 @@
 import {recipeTools,callRecipeTool,recipeInstructions} from '../../lib/recipe-tools';
-import {CloudError,json} from '../../lib/recipe-cloud';
+import {CloudError,json,owner} from '../../lib/recipe-cloud';
 export const dynamic='force-dynamic';
 export async function POST(request:Request) {
   let rpc:any;
@@ -20,12 +20,14 @@ export async function POST(request:Request) {
   if(rpc.method==='ping')return reply({});
   if(rpc.method==='tools/list')return reply({tools:recipeTools});
   if(rpc.method!=='tools/call')return failure(-32601,'Method not found.');
-  const user=request.headers.get('oai-authenticated-user-id');
-  if(!user)return json({error:'Sign in with ChatGPT to use your Cookstep library.'},401);
   try{
+    // Sites checks visitor access before forwarding MCP calls. Resolve the
+    // same authenticated shared collection used by the browser API.
+    const user=await owner();
     const value=await callRecipeTool(user,rpc.params?.name,rpc.params?.arguments??{});
     return reply({content:[{type:'text',text:JSON.stringify(value)}],structuredContent:value});
   }catch(error){
+    if(error instanceof CloudError&&error.status===401)return json({error:error.message},401);
     const message=error instanceof CloudError?error.message:'Could not complete this recipe action. Try again.';
     if(!(error instanceof CloudError))console.error('Cookstep tool failed',error);
     return reply({content:[{type:'text',text:message}],isError:true});
