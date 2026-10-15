@@ -65,6 +65,31 @@ test('themes preserve scrolling view, idle timer collapse and do not start timer
     expect((await savedSession(page)).cookingView).toBe('all');
   }
 });
+test('the task strip stays above scrolling cards and clear of desktop timers in every theme',async({page})=>{
+  await saveExample(page);await click(page,'start');await click(page,'cooking-menu');
+  await page.getByLabel('Cooking view',{exact:true}).selectOption('all');
+  for(const theme of THEMES){
+    await page.evaluate(()=>scrollTo(0,0));await choose(page,theme.id,true);
+    for(const width of [390,768,1100,1280,1512]){
+      await page.setViewportSize({width,height:900});
+      for(const y of [150,400,700]){
+        await page.evaluate(y=>scrollTo(0,y),y);
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+        const layout=await page.evaluate(()=>{
+          const strip=document.querySelector('.cooking-left'),button=strip.querySelector('.task-button'),b=button.getBoundingClientRect(),s=strip.getBoundingClientRect(),timer=document.querySelector('.timer-panel');
+          return {clickable:strip.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2)),background:getComputedStyle(strip).backgroundColor,headerBottom:document.querySelector('.cooking-top').getBoundingClientRect().bottom,stripTop:s.top,stripBottom:s.bottom,timerTop:timer.getBoundingClientRect().top};
+        });
+        const context=`${theme.id}, ${width}px, scroll ${y}`;
+        expect(layout.clickable,context).toBe(true);
+        expect(layout.background,context).not.toBe('rgba(0, 0, 0, 0)');
+        expect(Math.abs(layout.stripTop-layout.headerBottom),context).toBeLessThanOrEqual(1);
+        if(width>=1280)expect(layout.timerTop,context).toBeGreaterThanOrEqual(layout.stripBottom+8);
+      }
+    }
+  }
+  await expect(page.locator('.timer-card')).toHaveCount(0);
+  expect((await savedSession(page)).completed).toEqual([]);
+});
 test('all four themes fit phone, portrait tablet, landscape tablet and desktop',async({page})=>{
   await saveExample(page);await click(page,'library');
   for(const theme of THEMES){

@@ -549,10 +549,11 @@ dialog .cooking-menu-actions .btn{justify-content:flex-start;min-height:48px}
 .cooking-steps .step-top{margin-bottom:var(--space-22)}
 .scroll-step-actions{border-top:1px solid var(--line);margin-top:var(--space-24);padding-top:var(--space-20)}
 .scroll-step-actions .btn{min-height:52px}
-.all-steps-view .cooking-top{position:sticky;top:0;background:var(--background);z-index:6;padding:var(--space-10) 0}
-.all-steps-view .cooking-left{position:sticky;top:82px}#cooking-view{width:100%;margin-bottom:var(--space-20)}
-@media(max-width:1100px){.all-steps-view .cooking-left{top:74px;z-index:5;background:var(--background)}
-.cooking-steps .current-step{scroll-margin-top:var(--space-162)}}
+.cooking-page.all-steps-view .cooking-top{position:sticky;top:0;height:64px;background:var(--background);z-index:6;padding:var(--space-10) 0}
+.all-steps-view .cooking-left{position:sticky;top:64px;z-index:5;background:var(--background)}#cooking-view{width:100%;margin-bottom:var(--space-20)}
+@media(min-width:1280px){.all-steps-view .timer-panel{top:160px}
+.all-steps-view .current-step{scroll-margin-top:160px}}
+@media(max-width:1100px){.cooking-steps .current-step{scroll-margin-top:var(--space-162)}}
 @media(max-width:760px){.step-ingredient-box .ingredient-check{grid-template-columns:32px minmax(0,1fr) minmax(52px,40%);gap:var(--space-10);padding:var(--space-12) 0}
 .scroll-step-actions .btn{width:100%}
 .all-steps-view .cooking-left{top:64px}
