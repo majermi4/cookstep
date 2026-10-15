@@ -22,7 +22,7 @@ Physical iPad Chrome and Brave have not been available for testing. Check screen
 
 ## Deliberate behavior
 
-Recipe libraries and images are local to each browser, with no sync or server upload. The active session keeps a snapshot so replacements affect future sessions. Yield is chosen before cooking and remains fixed within that session; measurements always use metric. Times and temperatures do not scale. Missing per-step quantities are never replaced by whole-ingredient totals. Source images and generated illustrations display their provenance.
+Recipe libraries and images are local to each browser, with no sync or server upload. The active session keeps a snapshot so replacements affect future sessions. Yield is chosen before cooking and remains fixed within that session; measurements use metric, with tsp/tbsp and approximate grams together for spices. Times and temperatures do not scale. Missing per-step quantities are never replaced by whole-ingredient totals. Source images and generated illustrations display their provenance.
 
 The app is hosted privately; the public guide is a separate documentation-only Site containing instructions, contract and illustrative example. Private hosting may require the owner's hosting sign-in, while the guide is intended for access without sign-in. The local app itself has no account system.
 

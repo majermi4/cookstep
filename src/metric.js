@@ -1,6 +1,7 @@
 import {repairLegacyMeasurements} from './metric-migrations.js';
-// One-way ingestion compatibility. Stored recipes and displays use metric only.
-// Factors never convert volume to mass or infer ingredient density.
+import {spiceProfile,withSpiceMeasure,validSpiceMeasure} from './spice-measures.js';
+// One-way ingestion compatibility. Metric quantities remain the calculation
+// basis; spices also retain sourced spoon/gram display metadata.
 export const METRIC_UNITS = {g:['mass',1],kg:['mass',1000],ml:['volume',1],l:['volume',1000],mm:['length',1],cm:['length',10],m:['length',1000]};
 const legacy = {
   oz:['g',28.349523125],lb:['g',453.59237],fl_oz_us:['ml',29.5735295625],fl_oz_uk:['ml',28.4130625],
@@ -74,6 +75,23 @@ export function metricRecipe(recipe,{strict=false}={}){
   // This legacy meal uses the author's documented Australian volume convention.
   if(recipe.id==='e0b8a34c-83ae-4f8f-9cfb-33bff01b595b')Object.assign(context,{cup:'cup_metric',tbsp:'tbsp_metric',tsp:'tsp_metric'});
   if(czechSource&&verifiedLegacy){for(const i of recipe.ingredients||[])if(i.quantity){const map={cup_us:'cup_us_legal',tbsp_us:'tbsp_metric',tsp_us:'tsp_metric'};if(map[i.quantity.unit])i.quantity={...i.quantity,unit:map[i.quantity.unit]};}for(const step of recipe.steps||[])for(const u of step.ingredientUses||[])if(u.quantity){const map={cup_us:'cup_us_legal',tbsp_us:'tbsp_metric',tsp_us:'tsp_metric'};if(map[u.quantity.unit])u.quantity={...u.quantity,unit:map[u.quantity.unit]};}}
+  // Apply on reads as well as imports, so already converted library records,
+  // active snapshots and shopping lists gain the same cooking-friendly display.
+  for(const ingredient of recipe.ingredients||[]){
+    const english=recipe.translations?.en?.ingredients?.find(i=>i.id===ingredient.id)?.name;
+    const profile=spiceProfile(english||ingredient.name);
+    if(!profile&&!validSpiceMeasure(ingredient.quantity?.spiceMeasure))continue;
+    const spoonContext={tbsp:'tbsp_metric',tsp:'tsp_metric',...context};
+    const originalQuantity=ingredient.quantity;
+    ingredient.quantity=withSpiceMeasure(metricQuantity(originalQuantity,spoonContext,strict),originalQuantity,profile);
+    for(const step of recipe.steps||[])for(const use of step.ingredientUses||[]){
+      if(use.ingredientId!==ingredient.id||!use.quantity)continue;
+      const originalUse=use.quantity;
+      const measure=ingredient.quantity?.spiceMeasure;
+      const basis=validSpiceMeasure(measure)?{gramsPerTsp:measure.gramsPerUnit*5/measure.mlPerUnit,sourceUrl:measure.sourceUrl}:profile;
+      use.quantity=withSpiceMeasure(metricQuantity(originalUse,spoonContext,strict),originalUse,basis,measure);
+    }
+  }
   function walk(input,key=''){
     if(key==='translations')return input;
     if(typeof input==='string')return ['id','ingredientId','componentId','coverImageId','path','url','sourceUrl','author','language','formatVersion','unit'].includes(key)||key.endsWith('Ids')?input:metricText(input,context,strict);

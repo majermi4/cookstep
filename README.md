@@ -32,7 +32,7 @@ The browser tests use an isolated temporary Chrome profile; the default executab
 - Individual recipe ZIP export and whole-library ZIP export/import, including bundled images and explicit replacement/copy choices.
 - Duplicate-ID replacement or independent copy; existing cooking sessions retain a recipe snapshot.
 - Synced recipe library and images, local caching, durable upload retries, conflict copies, synced deletions, grouped ingredients, equipment, source attribution and original text.
-- Target yield selection, numeric and range scaling, metric-only storage/display and Celsius temperatures. Recognized legacy measurements convert on ingestion; ambiguous new amounts require clarification.
+- Target yield selection, numeric and range scaling, metric storage with spice spoon/gram display and Celsius temperatures. Recognized legacy measurements convert on ingestion; ambiguous new amounts require clarification.
 - Recipe shopping lists with people/yield scaling, size notes, whole-item purchase hints, optional items, remaining-item filtering, copyable lists and device-local saved purchase checks. Open **Shopping list** in a recipe; resume it from the library. Changing amounts or recipe ingredients clears checks.
 - Main guide and component tasks with independent progress and optional task suggestions.
 - Previous/Next buttons and left/right keyboard arrows browse steps without completing them; completion stays explicit.

@@ -64,11 +64,33 @@ Preserve alternatives as text when they cannot be represented faithfully as one 
 
 ### Unit conversion data
 
-Cookstep stores and displays metric measurements only. Use mass codes `g` and `kg`, volume codes `ml` and `l`, length codes `mm`, `cm` and `m`, and structured temperatures in `C`. Convert every source measurement before preparation, including ingredient totals, ingredientUses, equipment sizes, instruction prose, notes and all EN/ES/CZ translations. Prefer the publisher's original metric values, especially for dry ingredients. There is no measurement preference or system selector.
+Cookstep stores metric quantities and displays spices with tsp/tbsp and approximate grams together. Use mass codes `g` and `kg`, volume codes `ml` and `l`, length codes `mm`, `cm` and `m`, and structured temperatures in `C`. Convert every source measurement before preparation, including ingredient totals, ingredientUses, equipment sizes, instruction prose, notes and all EN/ES/CZ translations. Prefer the publisher's original metric values, especially for dry ingredients. There is no measurement preference or system selector.
 
 Use `piece` or an appropriate count label for countable ingredients. Preserve qualitative amounts such as “to taste.” Counts scale without conversion. Resolve source conventions from reliable source information; if a measurement cannot be converted reliably, obtain a clarified metric amount before saving. Do not guess ingredient density.
 
-Legacy packages with explicit known source conventions are converted once during import. Ambiguous measurements are rejected before saving. Conversions preserve dimension and full calculation precision; values round only for display. Stored records, exports, active snapshots and shopping lists contain metric amounts.
+Legacy packages with explicit known source conventions are converted once during import. Ambiguous measurements are rejected before saving. Conversions preserve dimension and full calculation precision; values round only for display. Stored records, exports, active snapshots and shopping lists contain metric amounts plus sourced spice display metadata when available.
+
+### Spice spoon and gram equivalents
+
+For measured spices, dried herbs and salt, show both a cooking spoon amount and approximate grams, for example `1 tbsp (≈ 6.9 g)` for paprika. Keep the structured calculation quantity in `ml`/`l` or `g`/`kg` and attach `quantity.spiceMeasure`:
+
+```json
+{
+  "text": "15 ml",
+  "value": 15,
+  "unit": "ml",
+  "spiceMeasure": {
+    "unit": "tbsp",
+    "mlPerUnit": 15,
+    "gramsPerUnit": 6.9,
+    "sourceUrl": "https://ods.od.nih.gov/pubs/usdandb/EPA-Food.pdf"
+  }
+}
+```
+
+`spiceMeasure.unit` is `tsp` or `tbsp`. `mlPerUnit` and `gramsPerUnit` must be positive finite numbers, supported by the cited ingredient-specific reference. Metric spoons are 5 ml and 15 ml; preserve explicit US or Australian source conventions when applicable. Prefer the publisher's own equivalent weights; identify the correct form (ground, whole, dried) and salt type. Never use a generic density or apply a dried-herb weight to fresh herbs. Keep `text` metric for ingestion compatibility; the app derives both displayed amounts from the structured quantity and this metadata, at every yield, including ranges. All gram equivalents display as approximate.
+
+Attach the same conversion basis to every corresponding `ingredientUses.quantity`, using only that step's amount. Metadata is shared numeric data, so do not duplicate it in translations. Known ingredients in existing recipes receive sourced defaults on read, including active sessions and shopping lists. Unrecognized spices require a verified ingredient-specific equivalent before adding metadata; do not invent a weight. Pinches, whole-item counts and “to taste” remain unchanged.
 
 ### Steps
 

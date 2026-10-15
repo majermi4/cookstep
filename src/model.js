@@ -1,6 +1,7 @@
 import {METRIC_UNITS,metricQuantity,metricRecord} from './metric.js';
 import {validateTranslations} from './recipe-locales.js';
 import {t,getLocale} from './i18n.js';
+import {spiceAmounts,validSpiceMeasure} from './spice-measures.js';
 export const FORMAT_VERSION = '0.2';
 // Remove the suffix automatically added by the original sync conflict handler.
 export const recipeTitle = title => typeof title === 'string' ? title.replace(/(?: \(saved from this device\))+$/, '') : title;
@@ -52,6 +53,10 @@ export function validateRecipe(r, files = null) {
     if (q.range !== undefined && (!object(q.range) || !positive(q.range.min) || !positive(q.range.max) || q.range.min > q.range.max)) fail(`${p}.range`, 'requires positive min and max, with min ≤ max');
     if (q.value !== undefined || q.range !== undefined) str(q.unit, `${p}.unit`);
     else if (q.unit !== undefined) str(q.unit, `${p}.unit`);
+    if(q.spiceMeasure!==undefined){
+      if(!validSpiceMeasure(q.spiceMeasure))fail(`${p}.spiceMeasure`,'requires tsp or tbsp, positive finite mlPerUnit and gramsPerUnit, and a sourceUrl');
+      if(!['ml','l','g','kg'].includes(q.unit)||q.value===undefined&&!q.range)fail(`${p}.spiceMeasure`,'requires a structured metric volume or mass');
+    }
   };
   if (!object(r)) return ['recipe: must be a JSON object'];
   if (r.formatVersion !== FORMAT_VERSION) fail('formatVersion', 'must be "0.2"; re-prepare older packages using the current guide');
@@ -120,9 +125,19 @@ export function validateRecipe(r, files = null) {
 }
 
 export const number = n => new Intl.NumberFormat(getLocale(), {maximumFractionDigits: n < 1 ? 3 : 2}).format(n);
+function spoonNumber(value){
+  const whole=Math.floor(value),fraction=value-whole;
+  const match=[[1/8,'⅛'],[1/4,'¼'],[1/3,'⅓'],[3/8,'⅜'],[1/2,'½'],[5/8,'⅝'],[2/3,'⅔'],[3/4,'¾'],[7/8,'⅞']].find(([n])=>Math.abs(fraction-n)<1e-8);
+  return match?(whole?number(whole)+' ':'')+match[1]:number(value);
+}
 export function formatQuantity(q, factor = 1) {
   if (!q) return {text:t('Amount not specified'),note:t('Check the source')};
   q=metricQuantity(q,{},false);
+  const spice=spiceAmounts(q,factor);
+  if(spice){
+    const grams=n=>new Intl.NumberFormat(getLocale(),{maximumFractionDigits:n<0.1?2:1}).format(n);
+    return {text:`${spice.spoons.map(spoonNumber).join('–')} ${spice.unit} (≈ ${spice.grams.map(grams).join('–')} g)`,note:''};
+  }
   if (q.value === undefined && !q.range) return {text:q.text,note:factor !== 1 ? t('Not scaled') : ''};
   let values = q.range ? [q.range.min * factor,q.range.max * factor] : [q.value * factor];
   if (values.some(v => !Number.isFinite(v))) return {text:q.text,note:t('Quantity exceeds supported range')};

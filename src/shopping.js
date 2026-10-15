@@ -25,7 +25,7 @@ export function shoppingQuantity(ingredient,factor) {
   const q=metricQuantity(ingredient.quantity,{},false),result=formatQuantity(q,factor);
   const notes=[result.note];
   // Keep source wording: it can specify sizes (e.g. 20 cm tortillas or 400 g tins).
-  if(q?.text&&result.text!==q.text)notes.push(ui`Original amount: ${q.text}`);
+  if(q?.text&&!q.spiceMeasure&&result.text!==q.text)notes.push(ui`Original amount: ${q.text}`);
   if(q?.range)notes.push(t('Buy enough for the upper end of the range.'));
   const amount=(q?.range?.max??q?.value)*factor;
   if(wholeUnits.has(q?.unit?.toLowerCase())&&Number.isFinite(amount)&&Math.abs(amount-Math.round(amount))>1e-9)

@@ -33,7 +33,7 @@ Store recipes supplied by the user and guide them through cooking with a focused
 - The primary cooking device is an iPad using Chrome or Brave.
 - Countdown completion requires a prominent visual alert and sound while the app is open. Background or lock-screen alerts are not required.
 - Let the user change the recipe's servings or item yield and scale ingredient quantities in the app.
-- Store and display metric measurements only, converting recognized legacy input on ingestion.
+- Store metric measurements and display spices as tsp/tbsp alongside approximate grams, converting recognized legacy input on ingestion.
 - Correct recipes externally through the AI preparer and re-import them; a recipe editor is deferred.
 
 ## Core experience
@@ -76,7 +76,7 @@ The interface should keep both the current instruction and active timers easy to
 
 ### Unit conversion
 
-- Use metric quantities consistently in ingredient totals, steps, shopping lists, exports and translations. There is no measurement-system selector.
+- Use metric calculation quantities consistently in ingredient totals, steps, shopping lists, exports and translations; retain sourced spoon/gram equivalents for spices. There is no measurement-system selector.
 - Convert structured cooking temperatures when supplied in the package. Preserve qualitative heat settings such as “medium-low.”
 - Keep conversions within the same measurement dimension: mass to mass, volume to volume, and temperature to temperature.
 - Do not infer grams from cups without ingredient-specific conversion data. This is outside the first-version automatic conversion scope.
@@ -187,7 +187,7 @@ The interface should keep both the current instruction and active timers easy to
 12. Primary cooking browsers: Chrome and Brave on iPad.
 13. Alerts: visual and sound while the app is open; background or lock-screen alerts are not required.
 14. Scaling: change servings or item yield in the app and scale ingredient quantities.
-15. Units: metric-only storage and display; one-way legacy migration.
+15. Units: metric storage with spice spoon/gram display; one-way legacy migration.
 16. Editing: external package corrections and re-import; an in-app recipe editor is deferred.
 
 ### Implementation checks
