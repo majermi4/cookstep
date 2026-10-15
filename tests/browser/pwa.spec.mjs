@@ -5,13 +5,17 @@ import {readFile,mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {resolve,extname} from 'node:path';
 import {zipSync,strToU8} from 'fflate';
-let server,origin,version=1,broken=false,privateRequests=0;
+let server,origin,version=1,broken=false,privateRequests=0,indexRequests=0;
 const frontend=existsSync('dist/client/index.html')?'dist/client':'dist';
 const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2'};
 test.beforeAll(async()=>{
   server=createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
     res.setHeader('Cache-Control','no-store');
+    // Match production hosting: the canonical app document is /.
+    if(url.pathname==='/index.html'){
+      indexRequests++;res.writeHead(307,{Location:'/'}).end();return;
+    }
     if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/mcp')||url.pathname.startsWith('/signin')){
       privateRequests++;res.writeHead(401,{'Content-Type':'application/json'}).end('{"error":"Sign in required"}');return;
     }
@@ -26,7 +30,7 @@ test.beforeAll(async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));origin='http://127.0.0.1:'+server.address().port;
 });
 test.afterAll(async()=>{await new Promise(resolve=>server.close(resolve));});
-test.beforeEach(()=>{version=1;broken=false;privateRequests=0;});
+test.beforeEach(()=>{version=1;broken=false;privateRequests=0;indexRequests=0;});
 async function open(page){
   await page.goto(origin);await expect(page.locator('[data-action="example"]')).toBeVisible();
   await page.evaluate(()=>navigator.serviceWorker.ready);
@@ -35,6 +39,20 @@ async function open(page){
 async function addRecipe(page){await page.locator('[data-action="example"]').click();await page.locator('[data-action="save-import"]').click();}
 async function snapshot(page){return page.evaluate(async()=>{const{read}=await import('/storage.js');return {recipes:await read('recipes'),session:await read('sessions','active'),shopping:await read('shopping')};});}
 async function update(page){version++;await page.evaluate(async()=>{await (await navigator.serviceWorker.getRegistration()).update();});await expect(page.locator('#pwa-status')).toContainText('Update available');}
+
+test('manual update checks install through the canonical app URL when index.html redirects',async({page})=>{
+  await open(page);await addRecipe(page);
+  const before=await snapshot(page);
+  version++;
+  await page.locator('.settings-trigger').click();
+  await page.locator('#pwa-settings [data-action="check-app-update"]').click();
+  await expect(page.locator('#pwa-settings [data-action="update-app"]')).toBeVisible();
+  await page.locator('.modal-close').click();
+  await Promise.all([page.waitForEvent('framenavigated',frame=>frame===page.mainFrame()),page.locator('#pwa-status [data-action="update-app"]').click()]);
+  await expect(page.locator('.recipe-card')).toHaveCount(1);
+  expect(await snapshot(page)).toEqual(before);
+  expect(indexRequests).toBe(0);
+});
 
 test('manifest, offline cooking, recipe images, shopping checks and timers survive a disconnected reload',async({page,context})=>{
   await open(page);

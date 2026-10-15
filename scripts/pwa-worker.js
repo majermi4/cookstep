@@ -10,7 +10,9 @@ self.addEventListener('install', event => {
     const cache = await caches.open(CACHE);
     try {
       await Promise.all(ASSETS.map(async path => {
-        const response = await fetch(path, {cache: 'reload', credentials: 'same-origin', redirect: 'error'});
+        // Hosting redirects /index.html to /. Fetch the canonical app route,
+        // retaining the offline key used by navigation and older app shells.
+        const response = await fetch(path === '/index.html' ? '/' : path, {cache: 'reload', credentials: 'same-origin', redirect: 'error'});
         const type = response.headers.get('content-type') || '';
         if (!response.ok || (path.endsWith('.html') ? !type.includes('text/html') : type.includes('text/html'))) {
           throw new Error('Offline download failed: ' + path);
