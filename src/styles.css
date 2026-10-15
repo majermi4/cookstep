@@ -620,4 +620,7 @@ dialog .cooking-menu-actions .btn{justify-content:flex-start;min-height:48px}
 .pwa-settings { border-top:1px solid var(--pwa-border); margin-top:20px; padding-top:16px; }
 .pwa-settings h3 { margin:0 0 8px; }
 .pwa-settings p { font-size:.9rem; }
+.pwa-settings .pwa-feedback { margin-top:12px; font-size:var(--text-13); font-weight:600; color:var(--primary); }
+.pwa-settings .pwa-feedback:empty { display:none; }
+.pwa-settings .pwa-help { margin-top:12px; font-size:var(--text-12); line-height:1.5; }
 @media(max-width:520px) { .pwa-update { align-items:flex-start; flex-direction:column; gap:10px; } }

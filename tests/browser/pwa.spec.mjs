@@ -108,10 +108,18 @@ test('a failed update download keeps the previous version usable offline and ret
 
 test('install instructions and update controls fit phone/tablet settings in all locales',async({page})=>{
   await open(page);await page.locator('.settings-trigger').click();
+  const feedback={en:'No new version available.',es:'No hay una nueva versión disponible.',cs:'Nová verze není dostupná.'};
   for(const locale of ['en','es','cs']){
     await page.locator('[data-locale]').selectOption(locale);
+    await page.locator('#pwa-settings [data-action="check-app-update"]').click();
+    await expect(page.locator('#modal #pwa-feedback')).toHaveText(feedback[locale]);
+    await expect(page.locator('#toast')).not.toHaveClass(/show/);
     for(const viewport of [{width:390,height:844},{width:768,height:1024}]){
       await page.setViewportSize(viewport);await expect(page.locator('#pwa-settings [data-action="install-app"]')).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+      await page.locator('#pwa-feedback').scrollIntoViewIfNeeded();
+      expect(await page.locator('#pwa-feedback').evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
+      expect(await page.locator('.pwa-help').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBe(12);
+      await page.screenshot({path:`artifacts/pwa-settings-feedback-${locale}-${viewport.width}.png`});
     }
   }
   await page.locator('[data-locale]').selectOption('en');await page.locator('[data-action="install-app"]').click();await expect(page.locator('#modal')).toContainText('Add to Home Screen');await page.screenshot({path:'artifacts/pwa-install-settings.png'});

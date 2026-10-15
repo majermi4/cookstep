@@ -48,20 +48,26 @@ let library = [], session = null, selected = null, view = 'library', search = ''
 let wakeLock = null, wakeStatus = 'Screen wake not active', audio = null, audioReady = false, storageError = '', sessionSaved = true, sessionSaveRevision = 0;
 const sounded = new Set(), imageUrls = new WeakMap();
 let syncStatus={state:'syncing',message:'Loading synced recipes…'};
+let pwaFeedback='';
 const pwa=createPwa({
   safeToUpdate:async()=>{
     await actionQueue;
     return updateSafe() && !await read('sessions','active');
   },
-  changed:()=>renderPwa(),notify:message=>toast(tr(message)),
+  changed:()=>renderPwa(),notify:message=>{
+    const feedback=modal.open&&modal.querySelector('#pwa-feedback');
+    if(feedback){pwaFeedback=message;feedback.textContent=tr(message);}
+    else toast(tr(message));
+  },
   installHelp:()=>showModal(()=>ui`<h2>Install Cookstep</h2><p>On iPhone or iPad, open Cookstep in Safari, tap Share, then Add to Home Screen. In other browsers, use Install app in the browser menu.</p>${button(tr('Done'),'close-modal','','primary')}`),
 });
 function updateSafe(){return !session&&sessionSaved&&shoppingSaved&&!storageError&&!pending&&!pendingLibrary&&!importing&&!pendingStart&&!modal.querySelector('#manual-form');}
 function pwaSettings(){
   const state=pwa.state;
-  return ui`<section id="pwa-settings" class="pwa-settings"><h3>App & updates</h3><p>${esc(tr(state.error?'Offline setup could not finish. Reconnect and reopen Cookstep to retry.':state.ready?'Ready offline · saved recipes available on this device':state.supported?'Preparing offline access…':'Offline installation is unavailable in this browser.'))}</p><div class="button-row">${state.installed?`<span>${esc(tr('Cookstep is installed'))}</span>`:button(tr('Install Cookstep'),'install-app')}${state.update?button(tr('Update now'),'update-app',updateSafe()?'':'disabled','primary'):button(tr('Check for updates'),'check-app-update')}</div><p class="muted small">${esc(tr('Install once. Future versions download automatically. Updates wait until you finish cooking.'))}</p></section>`;
+  return ui`<section id="pwa-settings" class="pwa-settings"><h3>App & updates</h3><p>${esc(tr(state.error?'Offline setup could not finish. Reconnect and reopen Cookstep to retry.':state.ready?'Ready offline · saved recipes available on this device':state.supported?'Preparing offline access…':'Offline installation is unavailable in this browser.'))}</p><div class="button-row">${state.installed?`<span>${esc(tr('Cookstep is installed'))}</span>`:button(tr('Install Cookstep'),'install-app')}${state.update?button(tr('Update now'),'update-app',updateSafe()?'':'disabled','primary'):button(tr('Check for updates'),'check-app-update')}</div><p id="pwa-feedback" class="pwa-feedback" role="status" aria-atomic="true">${esc(tr(pwaFeedback))}</p><p class="muted small pwa-help">${esc(tr('Install once. Future versions download automatically. Updates wait until you finish cooking.'))}</p></section>`;
 }
 function renderPwa(){
+  if(pwa.state.update&&pwaFeedback==='Downloading an update…')pwaFeedback='Update available';
   const node=document.querySelector('#pwa-status');
   if(node)node.innerHTML=pwa.state.update?`<div class="pwa-update"><div><strong>${esc(tr('Update available'))}</strong><span>${esc(tr(session?'Your update will wait until you finish cooking.':'A new version is ready. Your saved recipes and progress will stay.'))}</span></div>${button(tr('Update now'),'update-app',updateSafe()?'':'disabled','primary')}</div>`:'';
   const settings=document.querySelector('#pwa-settings');if(settings)settings.outerHTML=pwaSettings();
@@ -169,6 +175,7 @@ function focusClock(step) {
 }
 function settingsButton(){return button('','settings',uiText('aria-label="Settings" aria-haspopup="dialog"'),'settings-trigger','gear');}
 function settings(){
+  pwaFeedback='';
   showModal(()=>ui`<div class="settings-dialog"><h2>Settings</h2><div class="settings-rows">${languagePicker()}<button class="settings-row" data-action="theme-settings">${icon('palette')}<span>Theme</span>${icon('chevron')}</button><button class="settings-row" data-action="chatgpt">${icon('leaf')}<span>ChatGPT</span>${icon('chevron')}</button></div>${syncControl()}${pwaSettings()}</div>`);
 }
 function header() {
