@@ -45,7 +45,7 @@ Store recipes supplied by the user and guide them through cooking with a focused
 5. When an activity is underway, optionally open a sub-session such as a sauce or side dish. Each sub-session remembers its own progress.
 6. Switch between sub-sessions and the main guide at will while all active timers remain visible.
 7. Receive a clear alert when a countdown finishes and acknowledge it after checking the food.
-8. Finish cooking and leave cooking mode.
+8. Finish cooking from cooking options or the active-meal banner in the library, with confirmation.
 
 The interface should keep both the current instruction and active timers easy to read from a normal cooking distance. A recipe overview should remain accessible for orientation.
 
@@ -67,7 +67,7 @@ The interface should keep both the current instruction and active timers easy to
 - Allow a target serving count or item yield to be chosen before cooking. Scale from the original imported quantities so repeated changes do not compound rounding errors.
 - Use the same factor for ingredient totals and quantities used within individual steps.
 - Keep quantities separate for each meal component, preserving source-supplied proportions across the meal. Do not infer people served from an item yield.
-- Proposed first-version behavior: choose the target before cooking; prevent quantity changes during an active session to avoid changing instructions after ingredients have already been used.
+- Choose the target before cooking; prevent quantity changes during an active session to avoid changing instructions after ingredients have already been used. From a different recipe, allow starting a new meal after confirming that the old progress and timers will be cleared. Replace the saved active session atomically; cancellation or a storage failure preserves the old session.
 - The AI preparer supplies numeric amounts and units, or numeric ranges where supported by the source, for quantities that can be scaled.
 - Preserve qualitative quantities such as “to taste,” and clearly identify quantities that lack enough structured data to scale.
 - Do not silently round countable ingredients or pretend that ambiguous alternatives have exact scalable amounts. Display fractions or decimals where appropriate.

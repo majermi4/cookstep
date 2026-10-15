@@ -118,7 +118,11 @@
 .resume-icon{display:grid;place-items:center;background:var(--surface-soft);width:45px;height:45px;border-radius:var(--radius-md)}
 .resume-banner strong{font-size:var(--text-14)}
 .resume-banner p{font-size:var(--text-12);color:var(--text-muted)}
-.resume-banner .btn{margin-left:auto;font-size:var(--text-12)}
+.resume-summary{flex:1;min-width:0}
+.resume-actions{display:flex;align-items:center;gap:var(--space-8);margin-left:auto;flex-shrink:0}
+.resume-banner .btn{font-size:var(--text-12)}
+.finish-session-link{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:10px;border:0;border-radius:var(--radius-md);background:transparent;color:var(--text-muted)}
+.finish-session-link:hover{background:var(--surface-soft);color:var(--text)}
 .back-link{display:inline-flex;gap:var(--space-6);align-items:center;border:0;background:none;padding:var(--space-8) 0;color:var(--text-muted);font-size:var(--text-12)}
 .back-link svg{width:16px}
 .overview-heading{margin:var(--space-22) 0 var(--space-32)}
@@ -437,7 +441,8 @@ dialog details{margin:var(--space-19) 0}#toast{position:fixed;bottom:28px;left:5
 .recipe-card .card-art{height:190px}
 .section-heading{gap:var(--space-10)}
 .search input{width:125px;padding:var(--space-8) 0;font-size:var(--text-11)}
-.resume-banner{margin-bottom:var(--space-27)}
+.resume-banner{margin-bottom:var(--space-27);flex-wrap:wrap}
+.resume-actions{width:100%;justify-content:flex-end;margin-left:0}
 .resume-banner .btn{min-width:90px;padding:var(--space-10) var(--space-8)}
 .resume-banner strong{font-size:var(--text-11)}footer{flex-direction:column;gap:var(--space-10)}
 .prep-sidebar{gap:var(--space-12)}

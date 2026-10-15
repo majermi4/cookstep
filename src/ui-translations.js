@@ -1,5 +1,10 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Start a new meal?": ["¿Empezar una nueva comida?", "Začít nové vaření?"],
+  "Finish {0} and start {1}?": ["¿Terminar {0} y empezar {1}?", "Ukončit {0} a začít {1}?"],
+  "Running timers will stop and the current cooking progress will be cleared.": ["Los temporizadores en marcha se detendrán y se borrará el progreso de la comida actual.", "Spuštěné časovače se zastaví a dosavadní postup aktuálního vaření se vymaže."],
+  "Finish & start new meal": ["Terminar y empezar la nueva comida", "Ukončit a začít nové vaření"],
+  "Keep current meal": ["Mantener la comida actual", "Ponechat aktuální vaření"],
   "Settings": ["Ajustes", "Nastavení"],
   "Back to settings": ["Volver a ajustes", "Zpět do nastavení"],
   "Amount needs metric clarification": ["La cantidad necesita aclaración en unidades métricas", "Množství je potřeba upřesnit v metrických jednotkách"],
