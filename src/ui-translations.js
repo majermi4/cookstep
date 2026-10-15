@@ -1,5 +1,27 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Reconnect to check for updates.": ["Vuelve a conectarte para buscar actualizaciones.", "Připoj se k internetu pro kontrolu aktualizací."],
+  "Downloading an update…": ["Descargando una actualización…", "Stahuji aktualizaci…"],
+  "No new version available.": ["No hay una nueva versión disponible.", "Nová verze není dostupná."],
+  "Could not check for updates. Try again when connected.": ["No se pudieron buscar actualizaciones. Inténtalo cuando tengas conexión.", "Aktualizace se nepodařilo zkontrolovat. Zkus to po připojení."],
+  "Cookstep is installed": ["Cookstep está instalado", "Cookstep je nainstalovaný"],
+
+  "App & updates": ["App y actualizaciones", "Aplikace a aktualizace"],
+  "Offline setup could not finish. Reconnect and reopen Cookstep to retry.": ["No se pudo completar el acceso sin conexión. Vuelve a conectarte y abre Cookstep de nuevo.", "Přípravu pro použití offline se nepodařilo dokončit. Připoj se a znovu otevři Cookstep."],
+  "Ready offline · saved recipes available on this device": ["Disponible sin conexión · recetas guardadas en este dispositivo", "Připraveno offline · uložené recepty jsou dostupné na tomto zařízení"],
+  "Preparing offline access…": ["Preparando acceso sin conexión…", "Připravuji přístup offline…"],
+  "Offline installation is unavailable in this browser.": ["La instalación sin conexión no está disponible en este navegador.", "Instalace pro použití offline není v tomto prohlížeči dostupná."],
+  "Install Cookstep": ["Instalar Cookstep", "Nainstalovat Cookstep"],
+  "Check for updates": ["Buscar actualizaciones", "Zkontrolovat aktualizace"],
+  "Update now": ["Actualizar ahora", "Aktualizovat"],
+  "Update available": ["Actualización disponible", "Dostupná aktualizace"],
+  "Install once. Future versions download automatically. Updates wait until you finish cooking.": ["Instala una vez. Las nuevas versiones se descargan automáticamente y esperan a que termines de cocinar.", "Stačí nainstalovat jednou. Nové verze se stahují automaticky a počkají, až dovaříš."],
+  "Your update will wait until you finish cooking.": ["La actualización esperará hasta que termines de cocinar.", "Aktualizace počká, až dovaříš."],
+  "A new version is ready. Your saved recipes and progress will stay.": ["Hay una nueva versión lista. Tus recetas guardadas y tu progreso se conservarán.", "Nová verze je připravena. Uložené recepty i postup zůstanou zachované."],
+  "Finish cooking and save your changes before updating.": ["Termina de cocinar y guarda los cambios antes de actualizar.", "Před aktualizací dokonči vaření a ulož změny."],
+  "Finish cooking or close other Cookstep windows, then try updating again.": ["Termina de cocinar o cierra las otras ventanas de Cookstep y vuelve a intentar actualizar.", "Dokonči vaření nebo zavři ostatní okna Cookstep a zkus aktualizaci znovu."],
+  "On iPhone or iPad, open Cookstep in Safari, tap Share, then Add to Home Screen. In other browsers, use Install app in the browser menu.": ["En iPhone o iPad, abre Cookstep en Safari, toca Compartir y luego Agregar a la pantalla de inicio. En otros navegadores, usa Instalar app en el menú.", "Na iPhonu nebo iPadu otevři Cookstep v Safari, klepni na Sdílet a pak Přidat na plochu. V ostatních prohlížečích použij Nainstalovat aplikaci v nabídce prohlížeče."],
+
   "Remove shopping list: {0}": ["Eliminar lista de compras: {0}", "Odstranit nákupní seznam: {0}"],
   "Start a new meal?": ["¿Empezar una nueva comida?", "Začít nové vaření?"],
   "Finish {0} and start {1}?": ["¿Terminar {0} y empezar {1}?", "Ukončit {0} a začít {1}?"],

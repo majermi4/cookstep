@@ -7,6 +7,7 @@ import {importRecipes,exportRecipes} from './recipe-archive.js';
 import {THEMES,loadTheme,applyTheme,saveTheme} from './themes.js';
 import {createChatGPTPrompt} from './recipe-prompts.js';
 import {preparationPrompt} from './recipe-guidance.js';
+import {createPwa} from './pwa.js';
 import {peopleForRecipe,createShoppingList,shoppingRecipeKey,shoppingProgress,shoppingQuantity,shoppingText} from './shopping.js';
 
 const localizedCache=new WeakMap();
@@ -47,6 +48,24 @@ let library = [], session = null, selected = null, view = 'library', search = ''
 let wakeLock = null, wakeStatus = 'Screen wake not active', audio = null, audioReady = false, storageError = '', sessionSaved = true, sessionSaveRevision = 0;
 const sounded = new Set(), imageUrls = new WeakMap();
 let syncStatus={state:'syncing',message:'Loading synced recipes…'};
+const pwa=createPwa({
+  safeToUpdate:async()=>{
+    await actionQueue;
+    return updateSafe() && !await read('sessions','active');
+  },
+  changed:()=>renderPwa(),notify:message=>toast(tr(message)),
+  installHelp:()=>showModal(()=>ui`<h2>Install Cookstep</h2><p>On iPhone or iPad, open Cookstep in Safari, tap Share, then Add to Home Screen. In other browsers, use Install app in the browser menu.</p>${button(tr('Done'),'close-modal','','primary')}`),
+});
+function updateSafe(){return !session&&sessionSaved&&shoppingSaved&&!storageError&&!pending&&!pendingLibrary&&!importing&&!pendingStart&&!modal.querySelector('#manual-form');}
+function pwaSettings(){
+  const state=pwa.state;
+  return ui`<section id="pwa-settings" class="pwa-settings"><h3>App & updates</h3><p>${esc(tr(state.error?'Offline setup could not finish. Reconnect and reopen Cookstep to retry.':state.ready?'Ready offline · saved recipes available on this device':state.supported?'Preparing offline access…':'Offline installation is unavailable in this browser.'))}</p><div class="button-row">${state.installed?`<span>${esc(tr('Cookstep is installed'))}</span>`:button(tr('Install Cookstep'),'install-app')}${state.update?button(tr('Update now'),'update-app',updateSafe()?'':'disabled','primary'):button(tr('Check for updates'),'check-app-update')}</div><p class="muted small">${esc(tr('Install once. Future versions download automatically. Updates wait until you finish cooking.'))}</p></section>`;
+}
+function renderPwa(){
+  const node=document.querySelector('#pwa-status');
+  if(node)node.innerHTML=pwa.state.update?`<div class="pwa-update"><div><strong>${esc(tr('Update available'))}</strong><span>${esc(tr(session?'Your update will wait until you finish cooking.':'A new version is ready. Your saved recipes and progress will stay.'))}</span></div>${button(tr('Update now'),'update-app',updateSafe()?'':'disabled','primary')}</div>`:'';
+  const settings=document.querySelector('#pwa-settings');if(settings)settings.outerHTML=pwaSettings();
+}
 function attachTranslations(record){
   const latest=library.find(r=>r.id===record?.recipe?.id);
   if(latest?.recipe.translations&&!record.recipe.translations&&JSON.stringify(recipeText(record.recipe))===JSON.stringify(recipeText(latest.recipe))){
@@ -150,7 +169,7 @@ function focusClock(step) {
 }
 function settingsButton(){return button('','settings',uiText('aria-label="Settings" aria-haspopup="dialog"'),'settings-trigger','gear');}
 function settings(){
-  showModal(()=>ui`<div class="settings-dialog"><h2>Settings</h2><div class="settings-rows">${languagePicker()}<button class="settings-row" data-action="theme-settings">${icon('palette')}<span>Theme</span>${icon('chevron')}</button><button class="settings-row" data-action="chatgpt">${icon('leaf')}<span>ChatGPT</span>${icon('chevron')}</button></div>${syncControl()}</div>`);
+  showModal(()=>ui`<div class="settings-dialog"><h2>Settings</h2><div class="settings-rows">${languagePicker()}<button class="settings-row" data-action="theme-settings">${icon('palette')}<span>Theme</span>${icon('chevron')}</button><button class="settings-row" data-action="chatgpt">${icon('leaf')}<span>ChatGPT</span>${icon('chevron')}</button></div>${syncControl()}${pwaSettings()}</div>`);
 }
 function header() {
   return ui`<header class="header"><button class="brand" data-action="library" aria-label="Cookstep home"><span class="brand-icon">${icon('pot')}</span>cookstep<span class="brand-dot">.</span></button>${settingsButton()}</header>`;
@@ -264,6 +283,7 @@ function cookingScreen() {
   <details class="timer-panel" ${session.timers.some(t=>!t.stoppedAt)||idleTimerPanelOpen?'open':''}><summary class="timer-panel-heading"><h2>${icon('clock')} On the go</h2><span id="running-count">${session.timers.filter(t=>!t.stoppedAt).length}</span>${icon('chevron')}</summary><div id="timer-list">${timerCards()}</div>${button(tr('Add a timer'),'manual','','timer-add','plus')}<label class="batch-label" for="batch-name">Name your next batch <small>(optional)</small></label><input id="batch-name" placeholder="e.g. Batch 2" maxlength="80" value="${esc(batchName)}"><p class="timer-help">Timers are reminders to check your food. They never complete a step for you.</p></details></div><button class="mobile-timer-bar" data-action="timer-drawer">${icon("clock")}<span id="mobile-timer-summary">Timers within reach</span>${icon("chevron")}</button></main>`;
 }
 function render() {
+  renderPwa();
   document.documentElement.lang=getLocale();document.title=tr('Cookstep — a little calm in the kitchen');
   const focus=document.activeElement?.id, caret=document.activeElement?.selectionStart;
   app.innerHTML=(view==='cooking'&&session?'':header())+(storageError?`<div class="storage-error" role="alert">${esc(storageError)} ${button(tr('Retry saving'),'retry-save','','secondary')}</div>`:'')+(view==='cooking'&&session?cookingScreen():view==='shopping'&&shopping?shoppingScreen():view==='overview'&&selected?overviewScreen(selected):view==='import'&&pending?overviewScreen(pending,true):libraryScreen());
@@ -353,6 +373,9 @@ function libraryImportPreview(){
 async function importFile(file){if(!file||importing)return;importing=true;toast(tr('Checking your recipe package…'));try{const records=await importRecipes(file);if(records.length>1){pendingLibrary=records;libraryImportPreview();return;}pending=records[0];view='import';await releaseWake();render();window.scrollTo(0,0);}catch(e){showModal(()=>(ui`<div class="eyebrow">PACKAGE NEEDS A LITTLE WORK</div><h2>Couldn’t import this recipe</h2><p>${esc(translateMessage(e.message))}</p>${e.details?`<ul class="validation-errors">${e.details.map(x=>`<li>${esc(translateMessage(x))}</li>`).join('')}</ul>`:''}<p class="muted">Correct the package with your AI preparer, then try again. Nothing has been saved.</p>${button(tr('Choose another file'),'import','','primary','upload')}`));}finally{importing=false;document.querySelector('#file-input').value='';}}
 async function handleAction(el){
   const action=el.dataset.action,id=el.dataset.id;
+  if(action==='update-app'){void pwa.update();return;}
+  if(action==='check-app-update'){await pwa.check(true);return;}
+  if(action==='install-app'){void pwa.install();return;}
   if(action==='shopping'){await openShopping(selected);return;}
   if(action==='resume-shopping'){const list=shoppingLists.find(l=>l.id===id);if(list)await openShopping(library.find(r=>r.id===id)||{id,recipe:list.recipe},true);return;}
   if(action==='shopping-back'){selected=library.find(r=>r.id===shopping.id);if(selected){target=shopping.target;view='overview';}else view='library';render();window.scrollTo(0,0);return;}
@@ -460,7 +483,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('pagehide',()=>{if(session)saveSession();});
 window.addEventListener('beforeunload',e=>{if(!sessionSaved||!shoppingSaved){e.preventDefault();e.returnValue='';}});
 setInterval(updateTimers,500);
-async function init(){try{library=await read('recipes');session=await read('sessions','active')||null;shoppingLists=await read('shopping');await enrichSnapshots();}catch(e){storageError=ui`Browser storage is unavailable: ${e.message}. Enable storage for this site to keep recipes and cooking progress.`;}render();void cloud.sync();}
+async function init(){try{library=await read('recipes');session=await read('sessions','active')||null;shoppingLists=await read('shopping');await enrichSnapshots();}catch(e){storageError=ui`Browser storage is unavailable: ${e.message}. Enable storage for this site to keep recipes and cooking progress.`;}render();void cloud.sync();void pwa.start();}
 window.addEventListener('online',()=>void cloud.sync());
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void cloud.sync();});
 setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine)void cloud.sync();},60000);

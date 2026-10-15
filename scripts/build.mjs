@@ -2,6 +2,7 @@ import {cp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {themeStyles,themeBootstrap} from '../src/themes.js';
 import {createChatGPTPrompt} from '../src/recipe-prompts.js';
+import {buildPwa} from './build-pwa.mjs';
 const e=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function inline(s){return e(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\[([^\]]+)\]\(([^)]+)\)/g,(_,label,url)=>`<a href="${url.replace('RECIPE_FORMAT.md','format.html').replace('AI_RECIPE_GUIDE.md','index.html').replace('examples/recipe.json','recipe.json')}">${label}</a>`).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');}
 function markdown(text){let out='',code=false,list=null,table=false;const close=()=>{if(list){out+=`</${list}>`;list=null;}if(table){out+='</tbody></table>';table=false;}};for(const line of text.split('\n')){if(line.startsWith('```')){close();out+=code?'</code></pre>':'<pre><code>';code=!code;continue;}if(code){out+=e(line)+'\n';continue;}if(!line.trim()){close();continue;}if(/^\|/.test(line)){if(/^\|\s*[-:]+/.test(line))continue;const cells=line.split('|').slice(1,-1);if(!table){close();table=true;out+='<table><tbody>';}out+='<tr>'+cells.map(c=>`<td>${inline(c.trim())}</td>`).join('')+'</tr>';continue;}if(table){out+='</tbody></table>';table=false;}const h=line.match(/^(#{1,6}) (.*)/);if(h){close();out+=`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`;continue;}const li=line.match(/^(?:- |\d+\. )(.*)/);if(li){const type=/^\d/.test(line)?'ol':'ul';if(list!==type){close();list=type;out+=`<${type}>`;}out+=`<li>${inline(li[1])}</li>`;continue;}close();if(line.startsWith('> '))out+=`<blockquote id="preparation-prompt"><p>${inline(line.slice(2))}</p></blockquote>`;else out+=`<p>${inline(line)}</p>`;}close();return out;}
@@ -26,6 +27,7 @@ await rm('guide-site/dist',{recursive:true,force:true});await cp('dist/guide','g
 const appVersion=createHash('sha256').update(await readFile('src/app.js')).digest('hex').slice(0,12);
 const shell=(await readFile('src/index.html','utf8')).replace('src="./app.js"',`src="./app.js?v=${appVersion}"`);
 await writeFile('dist/index.html',shell);
+await buildPwa();
 await cp('dist','public',{recursive:true});
 await mkdir('app',{recursive:true});
 await writeFile('app/shell.ts','export default '+JSON.stringify(shell)+';\n');
