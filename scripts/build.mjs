@@ -1,4 +1,5 @@
 import {cp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {themeStyles,themeBootstrap} from '../src/themes.js';
 import {createChatGPTPrompt} from '../src/recipe-prompts.js';
 const e=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -21,9 +22,13 @@ await writeFile('dist/guide/index.html',head('Prepare a recipe',controls+markdow
 await writeFile('dist/guide/guide.js',`const prompts=${JSON.stringify({prompt:directPrompt,'zip-prompt':zipPrompt})};document.addEventListener('click',async e=>{const b=e.target.closest('[data-copy]');if(!b)return;const text=b.dataset.copy==='link'?new URL('./index.html',location.href).href:prompts[b.dataset.copy];try{await navigator.clipboard.writeText(text);document.querySelector('#copy-status').textContent=b.dataset.copy==='link'?'Guide link copied.':'Preparation prompt copied.';}catch{document.querySelector('#copy-status').textContent='Copy this text manually: '+text;}});`);
 await cp('src/styles.css','dist/guide/styles.css');await writeFile('dist/guide/themes.css',themeStyles());await cp('public/favicon.svg','dist/guide/favicon.svg');await cp('examples/recipe.json','dist/guide/recipe.json');await writeFile('dist/guide/RECIPE_FORMAT.md',rawFormat);await writeFile('dist/guide/AI_RECIPE_GUIDE.md',rawGuide);
 await rm('guide-site/dist',{recursive:true,force:true});await cp('dist/guide','guide-site/dist',{recursive:true});
+// A new interface must not reuse a browser's cached entry module after deploy.
+const appVersion=createHash('sha256').update(await readFile('src/app.js')).digest('hex').slice(0,12);
+const shell=(await readFile('src/index.html','utf8')).replace('src="./app.js"',`src="./app.js?v=${appVersion}"`);
+await writeFile('dist/index.html',shell);
 await cp('dist','public',{recursive:true});
 await mkdir('app',{recursive:true});
-await writeFile('app/shell.ts','export default '+JSON.stringify(await readFile('src/index.html','utf8'))+';\n');
+await writeFile('app/shell.ts','export default '+JSON.stringify(shell)+';\n');
 // The standalone guide checkout is optional; the app's bundled guide always builds.
 console.log('Built Cookstep and standalone recipe guide.');
 
