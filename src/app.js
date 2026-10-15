@@ -108,7 +108,7 @@ function shoppingSummary(list) {
   return ui`${number(list.target)} ${esc(localized(list).recipe.yield.unit)}${people?ui` · ${number(people*factor)} people`:''} · ${p.done}/${p.total} essentials checked`;
 }
 function savedShoppingHtml() {
-  return shoppingLists.length?ui`<section class="saved-shopping panel" aria-label="Saved shopping lists"><div class="section-heading"><h2>${icon('basket')} Shopping lists</h2><span class="muted small">Saved on this device</span></div>${shoppingLists.slice().sort((a,b)=>b.updatedAt-a.updatedAt).map(l=>`<button class="saved-shopping-link" data-action="resume-shopping" data-id="${esc(l.id)}"><span><strong>${esc(localized(l).recipe.title)}</strong><small>${shoppingSummary(l)}</small></span>${icon('arrow')}</button>`).join('')}</section>`:'';
+  return shoppingLists.length?ui`<section class="saved-shopping panel" aria-label="Saved shopping lists"><div class="section-heading"><h2>${icon('basket')} Shopping lists</h2><span class="muted small">Saved on this device</span></div>${shoppingLists.slice().sort((a,b)=>b.updatedAt-a.updatedAt).map(l=>`<div class="saved-shopping-row"><button class="saved-shopping-link" data-action="resume-shopping" data-id="${esc(l.id)}"><span><strong>${esc(localized(l).recipe.title)}</strong><small>${shoppingSummary(l)}</small></span>${icon('arrow')}</button><button class="remove-shopping-icon" data-action="remove-shopping" data-id="${esc(l.id)}" aria-label="${esc(ui`Remove shopping list: ${localized(l).recipe.title}`)}" title="${esc(tr('Remove list'))}">${icon('trash')}</button></div>`).join('')}</section>`:'';
 }
 function shoppingStatusText() {
   const p=shoppingProgress(shopping);
@@ -358,7 +358,7 @@ async function handleAction(el){
   if(action==='shopping-back'){selected=library.find(r=>r.id===shopping.id);if(selected){target=shopping.target;view='overview';}else view='library';render();window.scrollTo(0,0);return;}
   if(action==='shopping-filter'){shoppingRemaining=!shoppingRemaining;render();return;}
   if(action==='reset-shopping'){shopping.checked=[];await saveShopping();render();return;}
-  if(action==='remove-shopping'){await write('shopping',shopping.id);shoppingLists=shoppingLists.filter(l=>l.id!==shopping.id);shopping=null;view='library';render();return;}
+  if(action==='remove-shopping'){const listId=id||shopping?.id;if(!listId)return;await write('shopping',listId);shoppingLists=shoppingLists.filter(l=>l.id!==listId);if(shopping?.id===listId)shopping=null;view='library';render();return;}
   if(action==='copy-shopping'){const text=shoppingText(shopping);try{await navigator.clipboard.writeText(text);toast(tr('Shopping list copied, with quantities and purchase checks.'));}catch{showModal(()=>(ui`<h2>Copy shopping list</h2><textarea rows="14" readonly aria-label="Shopping list text">${esc(text)}</textarea>`));}return;}
   if(action==='chatgpt'){chatGPTSettings();return;}
   if(action==='export-library'||action==='export-recipe'){if(modal.open)modal.close();await downloadRecipes(action==='export-library'?library:[selected],action==='export-library');return;}

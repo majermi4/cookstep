@@ -1,5 +1,6 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Remove shopping list: {0}": ["Eliminar lista de compras: {0}", "Odstranit nákupní seznam: {0}"],
   "Start a new meal?": ["¿Empezar una nueva comida?", "Začít nové vaření?"],
   "Finish {0} and start {1}?": ["¿Terminar {0} y empezar {1}?", "Ukončit {0} a začít {1}?"],
   "Running timers will stop and the current cooking progress will be cleared.": ["Los temporizadores en marcha se detendrán y se borrará el progreso de la comida actual.", "Spuštěné časovače se zastaví a dosavadní postup aktuálního vaření se vymaže."],

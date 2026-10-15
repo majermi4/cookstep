@@ -90,3 +90,26 @@ test('version 2 storage upgrades preserve recipes and active cooking sessions',a
   await page.reload();await expect(page.locator('.saved-shopping')).toContainText('1/4 essentials');
   await expect(page.getByRole('button',{name:'Resume cooking',exact:true})).toBeVisible();
 });
+
+test('home remove icons delete only their selected list and keep the other list, recipe and active cooking after reload',async({page})=>{
+  await save(page);await check(page,'pasta').check();
+  await page.getByRole('button',{name:'Back to recipe',exact:true}).click();await page.getByRole('button',{name:'Start cooking',exact:true}).click();
+  await page.getByRole('button',{name:'Cooking options',exact:true}).click();await page.getByRole('button',{name:'My recipes',exact:true}).click();
+  const second={...structuredClone(sample),id:'second-shopping-list',title:'Another meal'};
+  await save(page,second);await check(page,'tomatoes').check();await page.getByRole('button',{name:'Cookstep home',exact:true}).click();
+  await expect(page.locator('.saved-shopping-row')).toHaveCount(2);
+  const remove=page.getByRole('button',{name:`Remove shopping list: ${sample.title}`,exact:true});
+  for(const theme of ['editorial-cookbook','kitchen-appliance','cozy-illustrated','recipe-studio']){
+    await page.locator('.settings-trigger').click();await page.getByRole('button',{name:'Theme',exact:true}).click();await page.locator(`input[name="theme"][value="${theme}"]`).check();await page.getByRole('button',{name:'Done',exact:true}).click();
+    for(const viewport of [{width:390,height:844},{width:768,height:1024}]){
+      await page.setViewportSize(viewport);await expect(remove.locator('svg')).toBeVisible();const box=await remove.boundingBox();expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    }
+  }
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/shopping-remove-home-phone.png'});
+  await remove.click();await expect(page.locator('.shopping-page')).toHaveCount(0);await expect(page.locator('.saved-shopping-row')).toHaveCount(1);
+  await expect(page.locator('.saved-shopping')).toContainText('Another meal');await expect(page.locator('.recipe-card')).toHaveCount(2);await expect(page.locator('.resume-banner')).toContainText(sample.title);
+  await page.reload();await expect(page.locator('.saved-shopping-row')).toHaveCount(1);await expect(page.locator('.recipe-card')).toHaveCount(2);await expect(page.locator('.resume-banner')).toContainText(sample.title);
+  await page.locator('[data-action="resume-shopping"]').click();await expect(check(page,'tomatoes')).toBeChecked();
+  await page.getByRole('button',{name:'Remove list',exact:true}).click();await expect(page.locator('.saved-shopping')).toHaveCount(0);
+  await page.locator(`[data-action="overview"][data-id="${sample.id}"]`).click();await page.getByRole('button',{name:'Shopping list',exact:true}).click();await expect(check(page,'pasta')).not.toBeChecked();
+});
