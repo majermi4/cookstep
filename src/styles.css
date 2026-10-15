@@ -171,7 +171,7 @@
 .step-number{width:25px;height:25px;border:1px solid var(--line);border-radius:var(--radius-sm);display:grid;place-items:center;font-size:var(--text-11);color:var(--text-muted);background:var(--surface-soft)}
 .preview-step h3{font-size:var(--text-14)}
 .preview-step p{font-size:var(--text-13);color:var(--text-muted);margin:var(--space-9) 0}
-.step-ingredients{padding:var(--space-8) var(--space-12);list-style:none;border-radius:var(--radius-control);background:var(--surface-soft)}
+.step-ingredients{padding:var(--space-8) var(--space-12);list-style:none;border-radius:var(--radius-md);background:var(--surface-soft)}
 .step-ingredients li{font-size:var(--text-11);padding:var(--space-6) 0;display:flex;justify-content:space-between;gap:var(--space-10)}
 .step-ingredients strong{font-size:var(--text-11)}
 .step-ingredients small{font-size:var(--text-10)}
@@ -376,6 +376,7 @@ dialog details{margin:var(--space-19) 0}#toast{position:fixed;bottom:28px;left:5
 .overview-heading h1{font-size:var(--text-33);letter-spacing:-1.5px}
 .overview-heading p{font-size:var(--text-13)}
 .prep-sidebar>.panel{margin:0}
+.prep-sidebar>.panel:nth-child(2):last-child{grid-column:1/-1}
 .overview-grid>.prep-sidebar+.panel{margin-top:0}
 .cooking-page{padding:var(--space-20) var(--space-15)}
 .cooking-grid{grid-template-columns:minmax(0,1fr)}
