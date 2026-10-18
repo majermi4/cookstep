@@ -100,6 +100,44 @@ test('ingredient cells have equal padding and step cards have distinct numbered 
   expect(title.options.baseline).toBe('middle');expect(title.y).toBeCloseTo(number.y,3);
 });
 
+test('step ingredient checkboxes and right-aligned amounts work beside images and at full width',async({page})=>{
+  await page.goto('/');
+  const layouts=await page.evaluate(async()=>{
+    const sample=await (await fetch('/examples/recipe.json')).json();
+    await import('/vendor/jspdf.js');const {createRecipePdf}=await import('/recipe-pdf.js'),Original=globalThis.jspdf.jsPDF;
+    const layouts=[];
+    for(const columns of [false,true]){
+      const recipe=structuredClone(sample),assets={};delete recipe.translations;delete recipe.components;
+      recipe.ingredients[0].name='A long descriptive ingredient name that wraps clearly onto more than one line';
+      recipe.steps=[{id:'prepare',title:'Prepare ingredients',instruction:'Gather these ingredients.',ingredientUses:[{ingredientId:'pasta',quantity:{text:'200 g',value:200,unit:'g'}},{ingredientId:'salt',quantity:{text:'a pinch'}}]}];
+      if(columns){
+        const canvas=document.createElement('canvas');canvas.width=200;canvas.height=100;canvas.getContext('2d').fillRect(0,0,200,100);
+        assets.photo=await new Promise(resolve=>canvas.toBlob(resolve));recipe.images=[{id:'photo',path:'images/photo.png'}];recipe.steps[0].imageIds=['photo'];
+      }
+      let inStep=false;const texts=[],checks=[];
+      globalThis.jspdf.jsPDF=function(...args){
+        const doc=new Original(...args),text=doc.text.bind(doc),rect=doc.rect.bind(doc),roundedRect=doc.roundedRect.bind(doc);
+        doc.roundedRect=(x,y,w,h,...rest)=>{if(w===9&&h===9)inStep=true;return roundedRect(x,y,w,h,...rest);};
+        doc.rect=(x,y,w,h,...rest)=>{if(inStep&&w===3.2&&h===3.2)checks.push({x,y});return rect(x,y,w,h,...rest);};
+        doc.text=(value,x,y,options)=>{if(inStep)texts.push({value,x,y,width:doc.getTextWidth(String(value)),options});return text(value,x,y,options);};
+        return doc;
+      };
+      try{await createRecipePdf({recipe,assets},4);layouts.push({columns,texts,checks});}
+      finally{globalThis.jspdf.jsPDF=Original;}
+    }
+    return layouts;
+  });
+  for(const layout of layouts){
+    expect(layout.checks).toHaveLength(2);
+    const name=layout.texts.find(text=>text.x===31),amount=layout.texts.find(text=>text.value==='400 g');
+    expect(amount.x).toBe(layout.columns?110:186);expect(amount.options.align).toBe('right');
+    expect(amount.y).toBe(name.y);expect(name.options.baseline).toBe('middle');
+    expect(layout.checks[0].y+1.6).toBeCloseTo(name.y,3);
+    expect(name.x+name.width).toBeLessThanOrEqual(amount.x-amount.width-2);
+    if(layout.columns)expect(layout.texts.filter(text=>text.x===31).length).toBeGreaterThan(2);
+  }
+});
+
 test.describe('Export errors',()=>{
 test.use({serviceWorkers:'block'});
 test('failed font loading reports an error and allows retry',async({page})=>{

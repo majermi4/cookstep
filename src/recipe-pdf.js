@@ -21,13 +21,13 @@ export function recipePdfContent(record,target=record.recipe.yield.quantity){
     equipment:r.equipment||[],notes:r.notes||[],
     tasks:groups.map(g=>({...g,steps:taskSteps(r,g.id).map(s=>({
       title:s.title,instruction:s.instruction,
+      ingredients:(s.ingredientUses||[]).map(use=>({name:r.ingredients.find(ingredient=>ingredient.id===use.ingredientId)?.name||'',amount:quantity(use.quantity)})),
       highlights:[
         s.temperature?formatTemperature(s.temperature):null,
         ...(s.timers||[]).map(timer=>`${timer.label}: ${timer.mode==='elapsed'?t('Elapsed tracking'):clockText(timer.durationSeconds)} · ${t('Start: {0}',[timer.startLabel])}`),
       ].filter(Boolean),
       details:[
         s.temperature?formatTemperature(s.temperature):null,
-        ...(s.ingredientUses||[]).map(u=>`${r.ingredients.find(i=>i.id===u.ingredientId)?.name}: ${quantity(u.quantity)}`),
         ...(s.timers||[]).map(timer=>`${timer.label}: ${timer.mode==='elapsed'?t('Elapsed tracking'):clockText(timer.durationSeconds)} · ${t('Start: {0}',[timer.startLabel])}`),
         s.completionCue?t('Ready when: {0}',[s.completionCue]):null,
         ...(s.notes||[]),
@@ -107,7 +107,32 @@ export async function createRecipePdf(record,target){
   }
   function detailSpace(step,maxWidth){
     const highlights=step.highlights.length?6+step.highlights.reduce((sum,detail)=>sum+measure(detail,{size:9.5,bold:true,maxWidth:maxWidth-6,after:1}),0):0;
-    return highlights+step.details.filter(detail=>!step.highlights.includes(detail)).reduce((sum,detail)=>sum+measure(detail,{size:9.5,maxWidth:maxWidth-3,after:2}),0);
+    const ingredients=step.ingredients.length?checklistRows(step,maxWidth).reduce((sum,row)=>sum+row.height,0)+2:0;
+    return highlights+ingredients+step.details.filter(detail=>!step.highlights.includes(detail)).reduce((sum,detail)=>sum+measure(detail,{size:9.5,maxWidth:maxWidth-3,after:2}),0);
+  }
+  function checklistRows(step,maxWidth){
+    const amountWidth=Math.min(44,maxWidth*0.38),nameWidth=maxWidth-amountWidth-11;
+    return step.ingredients.map(item=>{
+      style(9.5);const names=doc.splitTextToSize(item.name,nameWidth);
+      style(9.5,true);const amounts=doc.splitTextToSize(item.amount,amountWidth);
+      return {names,amounts,height:Math.max(names.length,amounts.length)*4.8+4};
+    });
+  }
+  function checklist(step,maxWidth){
+    for(const row of checklistRows(step,maxWidth)){
+      const lines=Math.max(row.names.length,row.amounts.length);
+      // Very long names can continue across pages; ordinary rows stay together.
+      if(row.height<=bottom-23)ensure(row.height);
+      for(let line=0;line<lines;line++){
+        ensure(4.8);const center=y+1.4;
+        if(line===0){doc.setDrawColor('#9daa9e');doc.setLineWidth(0.2);doc.rect(24,center-1.6,3.2,3.2,'S');}
+        if(row.names[line]){style(9.5,false,'#526259');doc.text(row.names[line],31,center,{baseline:'middle'});}
+        if(row.amounts[line]){style(9.5,true,'#425c49');doc.text(row.amounts[line],24+maxWidth,center,{align:'right',baseline:'middle'});}
+        y+=4.8;
+      }
+      y+=4;doc.setDrawColor('#e2e7e2');doc.line(31,y-3.5,24+maxWidth,y-3.5);
+    }
+    if(step.ingredients.length)y+=2;
   }
   function stepLayout(step){
     const headerHeight=Math.max(13,measure(step.title,{size:12,bold:true,maxWidth:143,after:0})+7);
@@ -192,6 +217,7 @@ export async function createRecipePdf(record,target){
         ensure(height);doc.setFillColor('#eef2ed');doc.roundedRect(24,y-3,bodyWidth,height,1,1,'F');y+=2;
         for(const detail of step.highlights)text(detail,{size:9.5,bold:true,color:'#425c49',x:27,maxWidth:bodyWidth-6,after:1});y+=4;
       }
+      checklist(step,bodyWidth);
       for(const detail of step.details.filter(detail=>!step.highlights.includes(detail)))text(detail,{size:9.5,color:'#526259',x:27,maxWidth:bodyWidth-3,after:2});
       if(layout.columns){
         const textBottom=y;y=bodyTop-3;await image(step.images[0],false,{maxWidth:68,maxHeight:78,x:118});y=Math.max(textBottom,y);

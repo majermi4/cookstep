@@ -14,6 +14,9 @@ test('PDF content scales ingredients and step uses while retaining all tasks and
   assert.equal(content.ingredients[0].items[0].amount,'400 g');
   assert.match(content.facts,/4 servings.*20 min–25 min/);
   assert.equal(content.tasks.flatMap(g=>g.steps).length,recipe.steps.length);
+  const pasta=content.tasks.flatMap(task=>task.steps).flatMap(step=>step.ingredients).find(ingredient=>ingredient.name==='Dried pasta');
+  assert.equal(pasta.amount,'400 g');
+  assert.ok(content.tasks.flatMap(task=>task.steps).some(step=>step.ingredients.some(ingredient=>ingredient.name==='Salt'&&ingredient.amount.includes('Not scaled'))));
   assert.ok(content.tasks.flatMap(g=>g.steps.flatMap(s=>s.details)).some(d=>d.includes('10:00')));
   assert.ok(content.tasks[0].steps[0].details.includes('Ready when: Both pans are ready.'));
   assert.ok(content.tasks[0].steps[0].details.includes('Use separate pans.'));
