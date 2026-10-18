@@ -1,5 +1,7 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Ingredient": ["Ingrediente", "Surovina"],
+  "Amount": ["Cantidad", "Množství"],
   "Method": ["Preparación", "Postup"],
   "A recipe image could not be loaded. Sync your recipes and try again.": ["No se pudo cargar una imagen de la receta. Sincroniza tus recetas e inténtalo de nuevo.", "Obrázek receptu se nepodařilo načíst. Synchronizuj recepty a zkus to znovu."],
   "Export recipe PDF": ["Exportar receta en PDF", "Exportovat recept do PDF"],

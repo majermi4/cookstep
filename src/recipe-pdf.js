@@ -21,6 +21,10 @@ export function recipePdfContent(record,target=record.recipe.yield.quantity){
     equipment:r.equipment||[],notes:r.notes||[],
     tasks:groups.map(g=>({...g,steps:taskSteps(r,g.id).map(s=>({
       title:s.title,instruction:s.instruction,
+      highlights:[
+        s.temperature?formatTemperature(s.temperature):null,
+        ...(s.timers||[]).map(timer=>`${timer.label}: ${timer.mode==='elapsed'?t('Elapsed tracking'):clockText(timer.durationSeconds)} · ${t('Start: {0}',[timer.startLabel])}`),
+      ].filter(Boolean),
       details:[
         s.temperature?formatTemperature(s.temperature):null,
         ...(s.ingredientUses||[]).map(u=>`${r.ingredients.find(i=>i.id===u.ingredientId)?.name}: ${quantity(u.quantity)}`),
@@ -33,7 +37,7 @@ export function recipePdfContent(record,target=record.recipe.yield.quantity){
     }))})).filter(g=>g.steps.length),
     sources:(r.sources||[]).map(s=>({title:s.title,author:s.author,url:safeUrl(s.url)?s.url:null})),
     images:r.images||[],
-    labels:Object.fromEntries(['Ingredients','Equipment','Method','Recipe notes','Sources','Page','of'].map(key=>[key,t(key)])),
+    labels:Object.fromEntries(['Ingredients','Ingredient','Amount','Equipment','Method','Recipe notes','Sources','Page','of'].map(key=>[key,t(key)])),
     translationMissing:!r.translations?.[getLocale()]&&getLocale()!==(r.language||'en').replace('cz','cs')?t('Translation missing for this language; showing the original recipe.'):null,
   };
 }
@@ -101,18 +105,27 @@ export async function createRecipePdf(record,target){
     ensure(7+measure(value,{size:15,bold:true,after:5})+keep);y+=6;text(value,{size:15,bold:true,after:3});
     doc.setDrawColor('#d8dfd8');doc.line(margin,y-1,192,y-1);y+=3;
   }
-  function stepLayout(step,index){
-    const titleHeight=measure(`${index+1}. ${step.title}`,{size:12,bold:true});
+  function detailSpace(step,maxWidth){
+    const highlights=step.highlights.length?6+step.highlights.reduce((sum,detail)=>sum+measure(detail,{size:9.5,bold:true,maxWidth:maxWidth-6,after:1}),0):0;
+    return highlights+step.details.filter(detail=>!step.highlights.includes(detail)).reduce((sum,detail)=>sum+measure(detail,{size:9.5,maxWidth:maxWidth-3,after:2}),0);
+  }
+  function stepLayout(step){
+    const headerHeight=Math.max(13,measure(step.title,{size:12,bold:true,maxWidth:143,after:0})+7);
     if(step.images.length===1){
       const picture=pictures.get(step.images[0]),caption=content.images.find(i=>i.id===step.images[0])?.caption;
-      const imageHeight=Math.min(78,70/picture.ratio)+4+(caption?measure(caption,{size:9,maxWidth:70}):0);
-      const textHeight=measure(step.instruction,{maxWidth:96})+step.details.reduce((sum,detail)=>sum+measure(detail,{size:9.5,maxWidth:92,after:2}),0);
-      const height=titleHeight+Math.max(imageHeight,textHeight)+6;
-      if(height<=210)return {columns:true,space:height};
+      const imageHeight=Math.min(78,68/picture.ratio)+4+(caption?measure(caption,{size:9,maxWidth:68}):0);
+      const textHeight=measure(step.instruction,{maxWidth:86})+detailSpace(step,86);
+      const height=headerHeight+10+Math.max(imageHeight,textHeight);
+      if(height<=210)return {columns:true,framed:true,headerHeight,space:height};
     }
-    return {columns:false,space:Math.min(120,titleHeight+measure(step.instruction)+step.details.reduce((sum,detail)=>sum+measure(detail,{size:9.5,indent:4,after:2}),0)+(step.images.length?72:0)+4)};
+    const imageHeight=step.images.reduce((sum,id)=>{
+      const picture=pictures.get(id),caption=content.images.find(i=>i.id===id)?.caption;
+      return sum+Math.min(66,162/picture.ratio)+4+(caption?measure(caption,{size:9,maxWidth:162}):0);
+    },0);
+    const height=headerHeight+10+measure(step.instruction,{maxWidth:162})+detailSpace(step,162)+imageHeight;
+    return {columns:false,framed:height<=210,headerHeight,space:height<=210?height:100};
   }
-  const stepSpace=(step,index)=>stepLayout(step,index).space;
+  const stepSpace=step=>stepLayout(step).space;
   async function image(id,cover=false,layout={}){
     const picture=pictures.get(id);
     const maxWidth=layout.maxWidth||width,h=Math.min(layout.maxHeight||(cover?50:66),maxWidth/picture.ratio),w=h*picture.ratio;
@@ -130,20 +143,27 @@ export async function createRecipePdf(record,target){
   if(content.translationMissing)text(content.translationMissing,{size:9});
   if(content.cover)await image(content.cover,true);
   heading(content.labels.Ingredients);
+  const tableHeader=()=>{
+    doc.setFillColor('#e9eee9');doc.rect(margin,y,width,9,'F');style(9,true,'#425c49');
+    doc.text(content.labels.Ingredient,24,y+4.5,{baseline:'middle'});
+    doc.text(content.labels.Amount,186,y+4.5,{align:'right',baseline:'middle'});y+=9;
+  };
   for(const group of content.ingredients){
-    if(content.ingredients.length>1||record.recipe.components?.length){ensure(18);text(group.title,{bold:true});}
+    ensure(30);
+    if(content.ingredients.length>1||record.recipe.components?.length)text(group.title,{bold:true});
+    tableHeader();
     for(const [row,item] of group.items.entries()){
-      style();const names=doc.splitTextToSize(item.name,101);style(10.5,true);const amounts=doc.splitTextToSize(item.amount,59);
+      style();const names=doc.splitTextToSize(item.name,101);style(10.5,true);const amounts=doc.splitTextToSize(item.amount,53);
       const height=Math.max(names.length,amounts.length)*lineHeight;
-      const noteSpace=item.notes?measure(item.notes,{size:9,indent:3,after:1}):0,rowHeight=height+noteSpace+5;
-      if(rowHeight>bottom-23){text(`${item.name} · ${item.amount}`);if(item.notes)text(item.notes,{size:9,color:'#69766d'});}else{
-        ensure(rowHeight);
-        if(row%2===0){doc.setFillColor('#f5f6f3');doc.rect(margin,y-3,width,rowHeight,'F');}
-        const start=y;style();for(const [index,line] of names.entries())doc.text(line,margin+3,start+index*lineHeight);
-        style(10.5,true);for(const [index,line] of amounts.entries())doc.text(line,189,start+index*lineHeight,{align:'right'});
-        y+=height;
-        if(item.notes)text(item.notes,{size:9,color:'#69766d',indent:3,after:1});
-        y+=5;
+      style(9);const notes=item.notes?doc.splitTextToSize(item.notes,162):[],noteSpace=notes.length?1+notes.length*4.4:0,rowHeight=height+noteSpace+6;
+      if(rowHeight>bottom-32){text(`${item.name} · ${item.amount}`);if(item.notes)text(item.notes,{size:9,color:'#69766d'});}else{
+        if(y+rowHeight>bottom){page();tableHeader();}
+        const top=y,start=top+3+lineHeight/2;
+        if(row%2===0){doc.setFillColor('#f5f6f3');doc.rect(margin,top,width,rowHeight,'F');}
+        style();for(const [index,line] of names.entries())doc.text(line,24,start+index*lineHeight,{baseline:'middle'});
+        style(10.5,true);for(const [index,line] of amounts.entries())doc.text(line,186,start+index*lineHeight,{align:'right',baseline:'middle'});
+        style(9,false,'#69766d');for(const [index,line] of notes.entries())doc.text(line,24,top+3+height+1+(index+0.5)*4.4,{baseline:'middle'});
+        y=top+rowHeight;doc.setDrawColor('#e2e7e2');doc.line(margin,y,192,y);
       }
     }
     y+=2;
@@ -154,15 +174,30 @@ export async function createRecipePdf(record,target){
   for(const task of content.tasks){
     if(content.tasks.length>1){ensure(taskHeadingSpace+stepSpace(task.steps[0],0));text(task.title,{size:12,bold:true,after:5});if(task.description)text(task.description);}
     for(const [index,step] of task.steps.entries()){
-      const layout=stepLayout(step,index);ensure(layout.space);
-      text(`${index+1}. ${step.title}`,{size:12,bold:true});
+      const layout=stepLayout(step);ensure(layout.space);
+      const top=y;
+      if(layout.framed){doc.setFillColor('#ffffff');doc.roundedRect(margin,top,width,layout.space,2,2,'F');}
+      doc.setFillColor('#eef2ed');doc.roundedRect(margin,top,width,layout.headerHeight,2,2,'F');
+      const badgeY=top+(layout.headerHeight-9)/2;
+      doc.setFillColor('#48634f');doc.roundedRect(23,badgeY,9,9,1.4,1.4,'F');
+      style(11,true,'#ffffff');doc.text(String(index+1),27.5,badgeY+4.5,{align:'center',baseline:'middle'});
+      style(12,true);const titleLines=doc.splitTextToSize(step.title,143),titleY=top+(layout.headerHeight-titleLines.length*lineHeight)/2+lineHeight/2;
+      for(const [lineIndex,line] of titleLines.entries())doc.text(line,37,titleY+lineIndex*lineHeight,{baseline:'middle'});
+      y=top+layout.headerHeight+7;
       const bodyTop=y;
-      text(step.instruction,{maxWidth:layout.columns?96:width});
-      for(const detail of step.details)text(detail,{size:9.5,color:'#526259',indent:4,maxWidth:layout.columns?92:width-4,after:2});
+      const bodyWidth=layout.columns?86:162;
+      text(step.instruction,{x:24,maxWidth:bodyWidth});
+      if(step.highlights.length){
+        const height=4+step.highlights.reduce((sum,detail)=>sum+measure(detail,{size:9.5,bold:true,maxWidth:bodyWidth-6,after:1}),0);
+        ensure(height);doc.setFillColor('#eef2ed');doc.roundedRect(24,y-3,bodyWidth,height,1,1,'F');y+=2;
+        for(const detail of step.highlights)text(detail,{size:9.5,bold:true,color:'#425c49',x:27,maxWidth:bodyWidth-6,after:1});y+=4;
+      }
+      for(const detail of step.details.filter(detail=>!step.highlights.includes(detail)))text(detail,{size:9.5,color:'#526259',x:27,maxWidth:bodyWidth-3,after:2});
       if(layout.columns){
-        const textBottom=y;y=bodyTop;await image(step.images[0],false,{maxWidth:70,maxHeight:78,x:122});y=Math.max(textBottom,y);
-      }else for(const id of step.images)await image(id);
-      y+=6;
+        const textBottom=y;y=bodyTop-3;await image(step.images[0],false,{maxWidth:68,maxHeight:78,x:118});y=Math.max(textBottom,y);
+      }else for(const id of step.images)await image(id,false,{maxWidth:162});
+      if(layout.framed){doc.setDrawColor('#d8dfd8');doc.roundedRect(margin,top,width,layout.space,2,2,'S');y=top+layout.space;}
+      y+=7;
     }
   }
   if(content.notes.length){heading(content.labels['Recipe notes']);for(const note of content.notes)text(note);}

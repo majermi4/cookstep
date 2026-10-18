@@ -69,6 +69,37 @@ test('cover and step photos retain original pixels, aspect ratios and recipe pla
   expect(pdf).not.toContain('/Creator (Cookstep)');
 });
 
+test('ingredient cells have equal padding and step cards have distinct numbered headers',async({page})=>{
+  await page.goto('/');
+  const drawing=await page.evaluate(async()=>{
+    const recipe=await (await fetch('/examples/recipe.json')).json();
+    recipe.ingredients[0].notes='Keep dry. Store in a sealed container.';
+    recipe.ingredients.push(...Array.from({length:30},(_,index)=>({id:`extra-${index}`,name:`Extra ingredient ${index+1}`,quantity:{text:'150 g',value:150,unit:'g'},notes:index%2?'Keep covered and chilled.':undefined})));
+    await import('/vendor/jspdf.js');const {createRecipePdf}=await import('/recipe-pdf.js');
+    const Original=globalThis.jspdf.jsPDF,texts=[],rects=[],cards=[];
+    globalThis.jspdf.jsPDF=function(...args){
+      const doc=new Original(...args),text=doc.text.bind(doc),rect=doc.rect.bind(doc),roundedRect=doc.roundedRect.bind(doc);
+      doc.text=(value,x,y,options)=>{texts.push({value,x,y,options,page:doc.internal.getCurrentPageInfo().pageNumber});return text(value,x,y,options);};
+      doc.rect=(x,y,w,h,...rest)=>{rects.push({x,y,w,h,page:doc.internal.getCurrentPageInfo().pageNumber});return rect(x,y,w,h,...rest);};
+      doc.roundedRect=(x,y,w,h,...rest)=>{cards.push({x,y,w,h,page:doc.internal.getCurrentPageInfo().pageNumber});return roundedRect(x,y,w,h,...rest);};
+      return doc;
+    };
+    try{await createRecipePdf({recipe,assets:{}});return {texts,rects,cards,steps:recipe.steps.length};}
+    finally{globalThis.jspdf.jsPDF=Original;}
+  });
+  const name=drawing.texts.find(t=>t.value==='Dried pasta'),amount=drawing.texts.find(t=>t.value==='200 g');
+  const row=drawing.rects.find(r=>r.page===name.page&&r.w===174&&r.y<name.y&&r.y+r.h>name.y);
+  expect(name.y).toBe(amount.y);expect(name.options.baseline).toBe('middle');expect(amount.options.baseline).toBe('middle');
+  expect(name.x-row.x).toBe(6);expect(row.x+row.w-amount.x).toBe(6);
+  expect(name.y-row.y).toBeCloseTo(5.65,2);
+  const note=drawing.texts.find(t=>String(t.value).startsWith('Keep dry.'));
+  expect(note.page).toBe(row.page);expect(note.y).toBeGreaterThan(name.y);expect(row.y+row.h-note.y).toBeGreaterThanOrEqual(5);
+  expect(drawing.texts.filter(t=>t.value==='Ingredient').length).toBeGreaterThanOrEqual(2);expect(drawing.texts.some(t=>t.value==='Amount')).toBe(true);
+  expect(drawing.cards.filter(card=>card.w===9&&card.h===9)).toHaveLength(drawing.steps);
+  const number=drawing.texts.find(t=>t.value==='1'),title=drawing.texts.find(t=>t.value==='Prepare sauce and pasta');
+  expect(title.options.baseline).toBe('middle');expect(title.y).toBeCloseTo(number.y,3);
+});
+
 test.describe('Export errors',()=>{
 test.use({serviceWorkers:'block'});
 test('failed font loading reports an error and allows retry',async({page})=>{
