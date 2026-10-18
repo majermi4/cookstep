@@ -1,6 +1,6 @@
 import './local-library-fixture.mjs';
 import {test,expect} from '@playwright/test';
-import {mkdir,readFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 
 const choose=async(page,locale)=>{await page.locator('.settings-trigger').click();await page.locator('[data-locale]').selectOption(locale);await page.locator('.modal-close').click();};
 const exportPdf=async(page,path)=>{
@@ -136,6 +136,44 @@ test('step ingredient checkboxes and right-aligned amounts work beside images an
     expect(name.x+name.width).toBeLessThanOrEqual(amount.x-amount.width-2);
     if(layout.columns)expect(layout.texts.filter(text=>text.x===31).length).toBeGreaterThan(2);
   }
+});
+
+test('utensils and notes have aligned lists, clean prose and safe page breaks',async({page})=>{
+  await page.goto('/');
+  const result=await page.evaluate(async()=>{
+    const recipe=await (await fetch('/examples/recipe.json')).json();delete recipe.translations;
+    recipe.equipment=['- **2 mixing bowls**','24 cm ovenproof dish with handles','Whisk','Small saucepan with a lid'];
+    recipe.notes=['• **Storage:** Keep refrigerated.\nUse within 2 days.','- Serve warm with\ncream or custard.'];
+    recipe.steps[0].notes=['**Prepare ahead:**\nMeasure ingredients first.','- Keep the counter clear.'];
+    await import('/vendor/jspdf.js');const {createRecipePdf}=await import('/recipe-pdf.js'),Original=globalThis.jspdf.jsPDF;
+    const texts=[],boxes=[],bullets=[],checks=[];
+    globalThis.jspdf.jsPDF=function(...args){
+      const doc=new Original(...args),text=doc.text.bind(doc),rect=doc.rect.bind(doc),roundedRect=doc.roundedRect.bind(doc),circle=doc.circle.bind(doc);
+      doc.text=(value,x,y,options)=>{texts.push({value,x,y,options,page:doc.internal.getCurrentPageInfo().pageNumber});return text(value,x,y,options);};
+      doc.rect=(x,y,w,h,...rest)=>{if(w===3.2&&h===3.2)checks.push({x,y,page:doc.internal.getCurrentPageInfo().pageNumber});return rect(x,y,w,h,...rest);};
+      doc.roundedRect=(x,y,w,h,...rest)=>{boxes.push({x,y,w,h,page:doc.internal.getCurrentPageInfo().pageNumber});return roundedRect(x,y,w,h,...rest);};
+      doc.circle=(x,y,r,...rest)=>{if(r===0.65)bullets.push({x,y,page:doc.internal.getCurrentPageInfo().pageNumber});return circle(x,y,r,...rest);};
+      return doc;
+    };
+    try{
+      const blob=await createRecipePdf({recipe,assets:{}}),sample={texts:[...texts],boxes:[...boxes],bullets:[...bullets],checks:[...checks],pdf:Array.from(new Uint8Array(await blob.arrayBuffer()))};
+      texts.length=boxes.length=bullets.length=checks.length=0;
+      recipe.notes=[Array(180).fill('Keep this note readable across page boundaries.').join(' ')];
+      await createRecipePdf({recipe,assets:{}});return {sample,long:{texts,boxes,bullets}};
+    }finally{globalThis.jspdf.jsPDF=Original;}
+  });
+  await writeFile('artifacts/pdf/utensils-notes.pdf',Buffer.from(result.sample.pdf));
+  const {texts,boxes,bullets,checks}=result.sample;
+  const bowl=texts.find(t=>t.value==='2 mixing bowls'),dish=texts.find(t=>String(t.value).startsWith('24 cm ovenproof'));
+  expect(bowl.x).toBe(31);expect(dish.x).toBe(121);expect(bowl.y).toBe(dish.y);
+  expect(checks.some(check=>check.x===24&&Math.abs(check.y+1.6-bowl.y)<.01)).toBe(true);
+  const note=texts.find(t=>t.value==='Storage: Keep refrigerated. Use within 2 days.');
+  expect(note.x).toBe(26);expect(note.options.baseline).toBe('middle');
+  expect(bullets.some(bullet=>bullet.page===note.page&&bullet.x===22&&bullet.y===note.y)).toBe(true);
+  expect(texts.some(t=>String(t.value).includes('Prepare ahead: Measure ingredients first.'))).toBe(true);
+  expect(texts.every(t=>!String(t.value).includes('**')&&!String(t.value).includes('\n'))).toBe(true);
+  for(const box of [...boxes,...result.long.boxes])expect(box.y+box.h).toBeLessThanOrEqual(276.01);
+  expect(new Set(result.long.texts.map(text=>text.page)).size).toBeGreaterThan(2);
 });
 
 test.describe('Export errors',()=>{

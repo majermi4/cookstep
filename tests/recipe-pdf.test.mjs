@@ -19,10 +19,22 @@ test('PDF content scales ingredients and step uses while retaining all tasks and
   assert.ok(content.tasks.flatMap(task=>task.steps).some(step=>step.ingredients.some(ingredient=>ingredient.name==='Salt'&&ingredient.amount.includes('Not scaled'))));
   assert.ok(content.tasks.flatMap(g=>g.steps.flatMap(s=>s.details)).some(d=>d.includes('10:00')));
   assert.ok(content.tasks[0].steps[0].details.includes('Ready when: Both pans are ready.'));
-  assert.ok(content.tasks[0].steps[0].details.includes('Use separate pans.'));
+  assert.deepEqual(content.tasks[0].steps[0].notes,['Use separate pans.']);
   assert.deepEqual(content.notes,recipe.notes);assert.deepEqual(content.equipment,recipe.equipment);
   assert.equal(content.sources[0].url,recipe.sources[0].url);assert.deepEqual(recipe,before);
   assert.throws(()=>recipePdfContent({recipe},0),/Invalid recipe yield/);
+});
+
+test('PDF utensils and notes clean pasted formatting without altering quantities or saved prose',()=>{
+  setLocale('en');const recipe=structuredClone(example);delete recipe.translations;
+  recipe.equipment=['- **2 mixing bowls**','A 24 cm\n  ovenproof dish'];
+  recipe.notes=['• Keep at **4 °C**.\nWrap tightly.\n\nFreeze for 3 months.','- Use `250 ml` milk.\n- Rest for 10 min.'];
+  recipe.steps[0].notes=['  **Prepare ahead:**\nKeep chilled.  '];const before=structuredClone(recipe);
+  const content=recipePdfContent({recipe});
+  assert.deepEqual(content.equipment,['2 mixing bowls','A 24 cm ovenproof dish']);
+  assert.deepEqual(content.notes,['Keep at 4 °C. Wrap tightly.','Freeze for 3 months.','Use 250 ml milk.','Rest for 10 min.']);
+  assert.deepEqual(content.tasks[0].steps[0].notes,['Prepare ahead: Keep chilled.']);
+  assert.deepEqual(recipe,before);
 });
 
 test('PDF text keeps Czech and Spanish overlays and their translated headings',()=>{

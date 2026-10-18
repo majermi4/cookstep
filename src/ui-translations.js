@@ -1,5 +1,6 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Notes": ["Notas", "Poznámky"],
   "Ingredient": ["Ingrediente", "Surovina"],
   "Amount": ["Cantidad", "Množství"],
   "Method": ["Preparación", "Postup"],

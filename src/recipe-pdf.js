@@ -6,6 +6,15 @@ export function recipePdfFilename(title){
   return (title.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').slice(0,80)||'recipe')+'.pdf';
 }
 
+// Recipe prose can arrive with pasted list markers or hard-wrapped lines.
+// Clean only presentation syntax; keep quantities, punctuation and wording.
+function proseItems(values=[]){
+  return values.flatMap(value=>String(value).replace(/\r\n?/g,'\n').split(/\n\s*\n|\n(?=\s*[-*•]\s+)/).map(part=>part
+    .split('\n').map(line=>line.trim().replace(/^[-*•]\s+/, '')).join(' ')
+    .replace(/\*\*([^*]+)\*\*/g,'$1').replace(/__([^_]+)__/g,'$1').replace(/`([^`]+)`/g,'$1')
+    .replace(/[\t \u00a0]+/g,' ').trim()).filter(Boolean));
+}
+
 // Prepare all text before asynchronous font/image loading. Formatting matches
 // the overview, including metric quantities and the spoon/gram spice pairs.
 export function recipePdfContent(record,target=record.recipe.yield.quantity){
@@ -18,9 +27,10 @@ export function recipePdfContent(record,target=record.recipe.yield.quantity){
     facts:`${t('Recipe yield')}: ${number(target)} ${r.yield.unit}${r.servings&&record.recipe.yield.unit!=='servings'?` · ${number(r.servings*factor)} ${t('people')}`:''}  |  ${t('Total time')}: ${formatTotalTime(r)}`,
     scaling:factor!==1?t('Amounts scale. Cooking times stay the same.'):null,
     ingredients:[{title:r.components?.length?t('Main guide & shared ingredients'):t('Ingredients'),items:r.ingredients.filter(i=>!i.componentId)},...(r.components||[]).map(c=>({title:c.title,items:r.ingredients.filter(i=>i.componentId===c.id)}))].filter(g=>g.items.length).map(g=>({...g,items:g.items.map(i=>({name:i.name+(i.optional?` (${t('optional')})`:''),amount:quantity(i.quantity),notes:i.notes}))})),
-    equipment:r.equipment||[],notes:r.notes||[],
+    equipment:proseItems(r.equipment),notes:proseItems(r.notes),
     tasks:groups.map(g=>({...g,steps:taskSteps(r,g.id).map(s=>({
       title:s.title,instruction:s.instruction,
+      notes:proseItems(s.notes),
       ingredients:(s.ingredientUses||[]).map(use=>({name:r.ingredients.find(ingredient=>ingredient.id===use.ingredientId)?.name||'',amount:quantity(use.quantity)})),
       highlights:[
         s.temperature?formatTemperature(s.temperature):null,
@@ -30,14 +40,13 @@ export function recipePdfContent(record,target=record.recipe.yield.quantity){
         s.temperature?formatTemperature(s.temperature):null,
         ...(s.timers||[]).map(timer=>`${timer.label}: ${timer.mode==='elapsed'?t('Elapsed tracking'):clockText(timer.durationSeconds)} · ${t('Start: {0}',[timer.startLabel])}`),
         s.completionCue?t('Ready when: {0}',[s.completionCue]):null,
-        ...(s.notes||[]),
         s.suggestedComponentIds?.length?t('Suggested tasks: {0}',[s.suggestedComponentIds.map(id=>r.components.find(c=>c.id===id)?.title).join(', ')]):null,
         s.sourceIds?.length?t('Sources: {0}',[s.sourceIds.map(id=>r.sources.find(source=>source.id===id)?.title).join(', ')]):null,
       ].filter(Boolean),images:s.imageIds||[],
     }))})).filter(g=>g.steps.length),
     sources:(r.sources||[]).map(s=>({title:s.title,author:s.author,url:safeUrl(s.url)?s.url:null})),
     images:r.images||[],
-    labels:Object.fromEntries(['Ingredients','Ingredient','Amount','Equipment','Method','Recipe notes','Sources','Page','of'].map(key=>[key,t(key)])),
+    labels:Object.fromEntries(['Ingredients','Ingredient','Amount','Equipment','Method','Notes','Recipe notes','Sources','Page','of'].map(key=>[key,t(key)])),
     translationMissing:!r.translations?.[getLocale()]&&getLocale()!==(r.language||'en').replace('cz','cs')?t('Translation missing for this language; showing the original recipe.'):null,
   };
 }
@@ -108,7 +117,51 @@ export async function createRecipePdf(record,target){
   function detailSpace(step,maxWidth){
     const highlights=step.highlights.length?6+step.highlights.reduce((sum,detail)=>sum+measure(detail,{size:9.5,bold:true,maxWidth:maxWidth-6,after:1}),0):0;
     const ingredients=step.ingredients.length?checklistRows(step,maxWidth).reduce((sum,row)=>sum+row.height,0)+2:0;
-    return highlights+ingredients+step.details.filter(detail=>!step.highlights.includes(detail)).reduce((sum,detail)=>sum+measure(detail,{size:9.5,maxWidth:maxWidth-3,after:2}),0);
+    const notes=step.notes.length?measure(content.labels.Notes,{size:9,bold:true,after:3})+noteSpace(step.notes,maxWidth):0;
+    return highlights+ingredients+notes+step.details.filter(detail=>!step.highlights.includes(detail)).reduce((sum,detail)=>sum+measure(detail,{size:9.5,maxWidth:maxWidth-3,after:2}),0);
+  }
+  function noteSpace(notes,maxWidth){
+    return notes.reduce((sum,note)=>sum+measure(note,{maxWidth:maxWidth-12,after:0})+8,0);
+  }
+  function noteList(notes,maxWidth=width,x=margin){
+    for(const note of notes){
+      style();const lines=doc.splitTextToSize(note,maxWidth-12);
+      if(lines.length*lineHeight+6<=210)ensure(lines.length*lineHeight+6);
+      let offset=0;
+      while(offset<lines.length){
+        let capacity=Math.floor((bottom-y-6)/lineHeight);
+        if(capacity<1){page();capacity=Math.floor((bottom-y-6)/lineHeight);}
+        const chunk=lines.slice(offset,offset+capacity),height=chunk.length*lineHeight+6,top=y;
+        doc.setFillColor('#f6f7f2');doc.roundedRect(x,top,maxWidth,height,1.5,1.5,'F');
+        if(!offset){doc.setFillColor('#6d806e');doc.circle(x+4,top+3+lineHeight/2,0.65,'F');}
+        style();for(const [index,line] of chunk.entries())doc.text(line,x+8,top+3+(index+0.5)*lineHeight,{baseline:'middle'});
+        offset+=chunk.length;y=top+height+2;
+      }
+    }
+  }
+  function equipmentRows(){
+    const columns=content.equipment.length>1?2:1,gap=6,cellWidth=(width-gap*(columns-1))/columns,rows=[];
+    for(let index=0;index<content.equipment.length;index+=columns){
+      style();const items=content.equipment.slice(index,index+columns).map(item=>doc.splitTextToSize(item,cellWidth-19));
+      rows.push({items,cellWidth,gap,height:Math.max(...items.map(lines=>lines.length))*lineHeight+8});
+    }
+    return rows;
+  }
+  function equipmentList(rows){
+    for(const row of rows){
+      if(row.height>bottom-23){
+        for(const lines of row.items)for(const line of lines)text(line,{x:24,maxWidth:162});
+        continue;
+      }
+      ensure(row.height);const top=y;
+      for(const [column,lines] of row.items.entries()){
+        const x=margin+column*(row.cellWidth+row.gap),center=top+4+lineHeight/2;
+        doc.setFillColor('#f7f8f5');doc.setDrawColor('#dde4dd');doc.roundedRect(x,top,row.cellWidth,row.height,2,2,'FD');
+        doc.setDrawColor('#9daa9e');doc.rect(x+6,center-1.6,3.2,3.2,'S');
+        style();for(const [index,line] of lines.entries())doc.text(line,x+13,center+index*lineHeight,{baseline:'middle'});
+      }
+      y=top+row.height+3;
+    }
   }
   function checklistRows(step,maxWidth){
     const amountWidth=Math.min(44,maxWidth*0.38),nameWidth=maxWidth-amountWidth-11;
@@ -193,7 +246,7 @@ export async function createRecipePdf(record,target){
     }
     y+=2;
   }
-  if(content.equipment.length){heading(content.labels.Equipment);for(const item of content.equipment)text(item,{after:1});}
+  if(content.equipment.length){const rows=equipmentRows();heading(content.labels.Equipment,Math.min(150,rows[0].height));equipmentList(rows);}
   const taskHeadingSpace=content.tasks.length>1?12:0;
   heading(content.labels.Method,content.tasks.length?taskHeadingSpace+stepSpace(content.tasks[0].steps[0],0):12);
   for(const task of content.tasks){
@@ -218,6 +271,7 @@ export async function createRecipePdf(record,target){
         for(const detail of step.highlights)text(detail,{size:9.5,bold:true,color:'#425c49',x:27,maxWidth:bodyWidth-6,after:1});y+=4;
       }
       checklist(step,bodyWidth);
+      if(step.notes.length){ensure(Math.min(210,measure(content.labels.Notes,{size:9,bold:true,after:3})+noteSpace([step.notes[0]],bodyWidth)));text(content.labels.Notes,{size:9,bold:true,color:'#425c49',x:24,after:3});noteList(step.notes,bodyWidth,24);}
       for(const detail of step.details.filter(detail=>!step.highlights.includes(detail)))text(detail,{size:9.5,color:'#526259',x:27,maxWidth:bodyWidth-3,after:2});
       if(layout.columns){
         const textBottom=y;y=bodyTop-3;await image(step.images[0],false,{maxWidth:68,maxHeight:78,x:118});y=Math.max(textBottom,y);
@@ -226,7 +280,7 @@ export async function createRecipePdf(record,target){
       y+=7;
     }
   }
-  if(content.notes.length){heading(content.labels['Recipe notes']);for(const note of content.notes)text(note);}
+  if(content.notes.length){heading(content.labels['Recipe notes'],Math.min(210,noteSpace([content.notes[0]],width)));noteList(content.notes);}
   if(content.sources.length){
     const sourceSpace=source=>Math.min(100,measure(source.title,{bold:true})+(source.author?measure(source.author,{size:9}):0)+(source.url?measure(source.url,{size:9,after:4}):0));
     heading(content.labels.Sources,sourceSpace(content.sources[0]));
