@@ -1,5 +1,10 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Total time": ["Tiempo total", "Celkový čas"],
+  "Time not specified": ["Tiempo no especificado", "Čas není uveden"],
+  "Includes preparation, cooking and waiting; parallel tasks overlap.": ["Incluye preparación, cocción y esperas; las tareas paralelas se solapan.", "Zahrnuje přípravu, vaření a čekání; souběžné úkoly se překrývají."],
+  "hr": ["h", "h"],
+  "min": ["min", "min"],
   "Reconnect to check for updates.": ["Vuelve a conectarte para buscar actualizaciones.", "Připoj se k internetu pro kontrolu aktualizací."],
   "Downloading an update…": ["Descargando una actualización…", "Stahuji aktualizaci…"],
   "No new version available.": ["No hay una nueva versión disponible.", "Nová verze není dostupná."],

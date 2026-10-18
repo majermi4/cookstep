@@ -17,6 +17,7 @@ Store recipes supplied by the user and guide them through cooking with a focused
 
 - The first version is for the user personally, usable across their devices by importing packages separately on each device.
 - Save recipes provided by the user for future cooking.
+- Show total elapsed cooking time on recipe cards, import previews and recipe details, including preparation and waiting while overlapping parallel tasks. Preserve source totals or clearly mark planning estimates; do not infer totals by adding timers or scale time with servings.
 - Support use in a browser and on phones and tablets, with layouts adapted to each screen size.
 - Browser access is sufficient for the first version; installed or native apps are not required.
 - Use large touch buttons for cooking controls in the first version.

@@ -64,6 +64,16 @@ export function validateRecipe(r, files = null) {
   if (!object(r.yield)) fail('yield', 'requires quantity and unit');
   else { if (!positive(r.yield.quantity)) fail('yield.quantity', 'must be a positive finite number'); str(r.yield.unit, 'yield.unit'); }
   if (r.servings !== undefined && !positive(r.servings)) fail('servings', 'must be a positive finite number of people');
+  if (r.totalTime !== undefined) {
+    const time=r.totalTime;
+    if (!object(time)) fail('totalTime','requires minutes or a range in minutes');
+    else {
+      if ((time.minutes !== undefined) === (time.range !== undefined)) fail('totalTime','provide exactly one of minutes or range');
+      if (time.minutes !== undefined && !positive(time.minutes)) fail('totalTime.minutes','must be a positive finite number');
+      if (time.range !== undefined && (!object(time.range) || !positive(time.range.min) || !positive(time.range.max) || time.range.min > time.range.max)) fail('totalTime.range','requires positive min and max minutes, with min ≤ max');
+      if (time.estimated !== undefined && typeof time.estimated !== 'boolean') fail('totalTime.estimated','must be a boolean');
+    }
+  }
   ['description','language'].forEach(k => optString(r, k, 'recipe'));
   ['equipment','notes'].forEach(k => { if (r[k] !== undefined) strings(r[k], k); });
   const ingredients = list('ingredients', true), steps = list('steps', true), components = list('components'), sources = list('sources'), images = list('images');
@@ -125,6 +135,19 @@ export function validateRecipe(r, files = null) {
 }
 
 export const number = n => new Intl.NumberFormat(getLocale(), {maximumFractionDigits: n < 1 ? 3 : 2}).format(n);
+// Recipe elapsed time is authored separately: summing timers double-counts
+// parallel tasks and misses preparation, resting and repeated batches.
+export function formatTotalTime(recipe) {
+  const time=recipe.totalTime;
+  if (!time) return t('Time not specified');
+  const duration=minutes=>{
+    const rounded=Math.ceil(minutes);
+    const hours=Math.floor(rounded/60),rest=rounded%60;
+    return [hours?`${number(hours)} ${t('hr')}`:'',rest?`${number(rest)} ${t('min')}`:''].filter(Boolean).join(' ');
+  };
+  const value=time.range?`${duration(time.range.min)}–${duration(time.range.max)}`:duration(time.minutes);
+  return `${time.estimated?'≈ ':''}${value}`;
+}
 function spoonNumber(value){
   const whole=Math.floor(value),fraction=value-whole;
   const match=[[1/8,'⅛'],[1/4,'¼'],[1/3,'⅓'],[3/8,'⅜'],[1/2,'½'],[5/8,'⅝'],[2/3,'⅔'],[3/4,'¾'],[7/8,'⅞']].find(([n])=>Math.abs(fraction-n)<1e-8);

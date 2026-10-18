@@ -9,6 +9,7 @@
     "unit": "servings"
   },
   "servings": 2,
+  "totalTime": {"range": {"min": 20, "max": 25}, "estimated": true},
   "components": [
     {
       "id": "sauce",

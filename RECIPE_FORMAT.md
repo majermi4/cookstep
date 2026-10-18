@@ -33,9 +33,17 @@ Required recipe fields:
 | `ingredients` | Array of ingredients, each with a unique `id` and `name`. |
 | `steps` | Nonempty array. Array order defines step order within the main guide and each component. |
 
-Optional recipe fields: `description`, `language` (e.g. `en` or `cs`), `servings` (positive number of people served, only when known), `sources`, `components`, `equipment` (array of strings), `images` (array), `coverImageId`, and `notes` (array of strings).
+Optional recipe fields: `totalTime` (see below), `description`, `language` (e.g. `en` or `cs`), `servings` (positive number of people served, only when known), `sources`, `components`, `equipment` (array of strings), `images` (array), `coverImageId`, and `notes` (array of strings).
 
 Each entry in `sources` requires unique `id` and `title`, with optional `url`, `author`, and `originalText`. Optional `sourceIds` arrays on steps and ingredients reference those entries. Attribute shopping quantities separately from cooking methods; do not fabricate metadata.
+
+### Total cooking time
+
+Include `totalTime` for every newly prepared recipe. It is the elapsed time from starting preparation until the whole recipe is ready to serve: include preparation, cooking, necessary cooling, resting, rising, soaking or chilling. Overlap tasks that can run in parallel; account for repeated batches at the stated yield. Do not sum timer templates or component durations. A side dish prepared as a separate recipe has its own time.
+
+Use `{"minutes": 60}` for a source-published total, or `{"range": {"min": 60, "max": 90}, "estimated": true}` for a realistic planning estimate. Supply exactly one of `minutes` or `range`; all values must be positive finite numbers and range min ≤ max. Optional `estimated` must be a boolean; mark inferred totals as `true`. Preserve a source's range instead of inventing precision. If no defensible total is available, omit the field and disclose the missing time; the UI displays “Time not specified.” Older format 0.2 recipes remain valid without this field.
+
+This canonical numeric metadata is shared across languages, sync and ZIP exports. Do not duplicate it in translation overlays. Yield changes never multiply the total automatically; batch capacity can affect the actual time.
 
 ### Components and sub-sessions
 
