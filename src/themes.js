@@ -25,7 +25,7 @@ const base = {
 };
 function defineTheme(id,name,description,layout,overrides={}) {
   const tokens = Object.fromEntries(Object.entries(base).map(([group,values])=>[group,{...values,...overrides[group]}]));
-  return {id,name,description,layout,colorScheme:overrides.colorScheme || 'light',tokens};
+  return {id,name,description,layout,colorScheme:overrides.colorScheme || 'light',browserColor:overrides.browserColor || tokens.colors.background,tokens};
 }
 // Add themes here. A layout selects shared CSS composition, never a separate cooking implementation.
 export const THEMES = [
@@ -46,6 +46,7 @@ export const THEMES = [
     shadows:{'shadow-panel':'0 4px 16px #77573206','shadow-modal':'0 20px 70px #51394530','shadow-floating':'0 5px 20px #5b644522'},
   }),
   defineTheme('recipe-studio','Recipe Studio','White, herb green and a photographic workspace with a visual step rail.','studio',{
+    browserColor:'#ffffff',
     colors:{background:'#f6f6f3',surface:'#ffffff',text:'#171d17','text-muted':'#646b60',primary:'#2b7032','primary-hover':'#215728','on-primary':'#ffffff','surface-soft':'#e9eee5',accent:'#2b7032',line:'#e0e3dc',hover:'#edf1e9','heading-soft':'#2b7032','feature-bg':'#edf0e8','check-line':'#83a17a',focus:'#276532','timer-bg':'#ffffff','timer-card':'#f5f7f2','timer-hover':'#e9efe4','timer-line':'#d7dfd0','timer-ink':'#1b2f1a','timer-muted':'#687660'},
     radii:{'radius-control':'8px','radius-md':'9px','radius-lg':'12px','radius-xl':'12px'},
     shadows:{'shadow-panel':'none','shadow-modal':'0 24px 80px #203a2433','shadow-floating':'0 4px 20px #203a2422'},
@@ -66,7 +67,7 @@ export function applyTheme(id,doc=document) {
   doc.documentElement.dataset.layout=theme.layout;
   doc.documentElement.style.colorScheme=theme.colorScheme;
   const meta=doc.querySelector('meta[name="theme-color"]');
-  if(meta)meta.content=theme.tokens.colors.background;
+  if(meta)meta.content=theme.browserColor;
   return theme;
 }
 export function themeStyles() {
@@ -74,6 +75,6 @@ export function themeStyles() {
 }
 // Generated from the registry and run before first paint, including when local storage is unavailable.
 export function themeBootstrap() {
-  const choices=THEMES.map(t=>({id:t.id,layout:t.layout,colorScheme:t.colorScheme,background:t.tokens.colors.background}));
+  const choices=THEMES.map(t=>({id:t.id,layout:t.layout,colorScheme:t.colorScheme,background:t.browserColor}));
   return `(()=>{const choices=${JSON.stringify(choices)};let id;try{id=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});}catch{}const t=choices.find(t=>t.id===id)||choices.find(t=>t.id===${JSON.stringify(DEFAULT_THEME)});document.documentElement.dataset.theme=t.id;document.documentElement.dataset.layout=t.layout;document.documentElement.style.colorScheme=t.colorScheme;document.querySelector('meta[name="theme-color"]').content=t.background;})();\n`;
 }

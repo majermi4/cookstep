@@ -11,7 +11,7 @@ async function choose(page,id,cooking=false){
   await click(page,'theme-settings');
   await page.locator(`input[name="theme"][value="${id}"]`).check();
   await expect(page.locator('html')).toHaveAttribute('data-theme',id);
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content',THEMES.find(t=>t.id===id).tokens.colors.background);
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content',THEMES.find(t=>t.id===id).browserColor);
   await click(page,'close-modal');
 }
 const savedSession=page=>page.evaluate(async()=>{const {read}=await import('/storage.js');return read('sessions','active');});
@@ -23,7 +23,7 @@ test('themes remain selected across navigation and reload, and keyboard selectio
   await expect(page.locator('#theme-persistence')).toContainText('saved on this device');
   await page.keyboard.press('Escape');await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme','kitchen-appliance');
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content',THEMES[1].tokens.colors.background);
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content',THEMES[1].browserColor);
   await click(page,'example');await expect(page.locator('html')).toHaveAttribute('data-theme','kitchen-appliance');
   await click(page,'save-import');await click(page,'library');
   await expect(page.locator('.recipe-card')).toHaveCount(1);

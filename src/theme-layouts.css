@@ -206,6 +206,9 @@
 [data-layout="illustrated"] .timer-digits{font-family:var(--font-body);font-weight:600}
 [data-layout="illustrated"] .completed-label{font-family:var(--font-handwriting);font-size:24px;justify-content:center;color:var(--heading-soft)}
 /* Recipe Studio: photographic canvas and a thumbnail rail, ingredients below the action. */
+/* Keep the phone status area white while the page retains its soft gray background. */
+html[data-layout="studio"]{background:var(--surface)}
+[data-layout="studio"] body{background:var(--background)}
 [data-layout="studio"] .header{height:78px;background:var(--surface)}
 [data-layout="studio"] .brand-icon{border-radius:0;background:transparent;color:var(--primary)}
 [data-layout="studio"] .library-art{opacity:.55}
