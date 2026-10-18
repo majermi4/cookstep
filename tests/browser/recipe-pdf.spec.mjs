@@ -40,11 +40,33 @@ test('PDF includes photos and long recipes paginate, including a long source URL
     recipe.steps[0].instruction=Array(45).fill('Připrav všechny suroviny, promíchej omáčku a vař na mírném ohni.').join('\n');
     recipe.notes=['Podávej horké.'];recipe.sources=[{id:'web',title:'Původní recept',author:'Test kitchen',url:'https://example.com/'+('recipe-'.repeat(65))}];
     recipe.images=[{id:'cover',path:'images/cover.png',caption:'Čerstvě uvařené jídlo'}];recipe.coverImageId='cover';
-    const blob=await (await fetch('/icons/icon-192.png')).blob();
+    const canvas=document.createElement('canvas');canvas.width=1800;canvas.height=1200;
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#d7bb85';ctx.fillRect(0,0,1800,1200);ctx.fillStyle='#718267';ctx.fillRect(100,100,1600,1000);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
     const {write}=await import('/storage.js');await write('recipes',{id:recipe.id,recipe,assets:{cover:blob}});
   });
   await page.reload();await page.locator('.card-click').click();await choose(page,'cs');
   await exportPdf(page,'artifacts/pdf/long-recipe-cs.pdf');
+});
+
+test('cover and step photos retain original pixels, aspect ratios and recipe placement',async({page})=>{
+  await page.goto('/');
+  await page.evaluate(async()=>{
+    const recipe=await (await fetch('/examples/recipe.json')).json();delete recipe.translations;delete recipe.components;
+    recipe.title='Illustrated recipe';recipe.steps=recipe.steps.slice(0,2).map((step,index)=>({...step,componentId:undefined,suggestedComponentIds:undefined,imageIds:[index?'portrait':'landscape']}));
+    recipe.coverImageId='cover';const assets={};recipe.images=[];
+    for(const [id,w,h,type,color] of [['cover',1800,1200,'image/jpeg','#935c36'],['landscape',2000,1000,'image/png','#55806a'],['portrait',800,1200,'image/webp','#627b99']]){
+      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');
+      ctx.fillStyle=color;ctx.fillRect(0,0,w,h);ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w/4,h/4);
+      assets[id]=await new Promise(resolve=>canvas.toBlob(resolve,type));recipe.images.push({id,path:`images/${id}.${type.split('/')[1]}`,caption:`${id} original picture`});
+    }
+    const {write}=await import('/storage.js');await write('recipes',{id:recipe.id,recipe,assets});
+  });
+  await page.reload();await page.locator('.card-click').click();await exportPdf(page,'artifacts/pdf/original-images.pdf');
+  const pdf=(await readFile('artifacts/pdf/original-images.pdf')).toString('latin1');
+  const dimensions=[...pdf.matchAll(/\/Subtype \/Image\s*\/Width (\d+)\s*\/Height (\d+)/g)].map(match=>[Number(match[1]),Number(match[2])]);
+  expect(dimensions).toEqual([[1800,1200],[2000,1000],[800,1200]]);
+  expect(pdf).not.toContain('/Creator (Cookstep)');
 });
 
 test.describe('Export errors',()=>{
@@ -55,6 +77,18 @@ test('failed font loading reports an error and allows retry',async({page})=>{
   await page.locator('[data-action="recipe-options"]').click();await page.locator('[data-action="export-recipe-pdf"]').click();
   await expect(page.locator('#modal h2')).toHaveText('Couldn’t export PDF');await page.locator('.modal-close').click();
   await page.unroute('**/fonts/typeface-5.ttf');await exportPdf(page,'artifacts/pdf/retry.pdf');
+});
+test('a missing or broken recipe photo blocks export with a useful error',async({page})=>{
+  await page.goto('/');
+  await page.evaluate(async()=>{
+    const recipe=await (await fetch('/examples/recipe.json')).json();recipe.coverImageId='missing';
+    recipe.images=[{id:'missing',path:'images/missing.png'}];
+    const {write}=await import('/storage.js');await write('recipes',{id:recipe.id,recipe,assets:{}});
+  });
+  await page.reload();await page.locator('.card-click').click();
+  await page.locator('[data-action="recipe-options"]').click();await page.locator('[data-action="export-recipe-pdf"]').click();
+  await expect(page.locator('#modal h2')).toHaveText('Couldn’t export PDF');
+  await expect(page.locator('#modal')).toContainText('A recipe image could not be loaded. Sync your recipes and try again.');
 });
 });
 

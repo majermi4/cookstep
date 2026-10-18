@@ -385,8 +385,9 @@ async function downloadRecipePdf(record,yieldTarget){
     link.href=url;link.download=recipePdfFilename(exported.recipe.title);document.body.append(link);link.click();link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),60000);
     toast(tr('PDF ready. Share the downloaded file with anyone.'));
-  }catch{
-    showModal(()=>(ui`<h2>Couldn’t export PDF</h2><p>Try again. If you are offline, reconnect once to finish downloading the export tools.</p>${button(tr('Close'),'close-modal','','primary')}`));
+  }catch(error){
+    const message=error.code==='PDF_IMAGE_UNAVAILABLE'?'A recipe image could not be loaded. Sync your recipes and try again.':'Try again. If you are offline, reconnect once to finish downloading the export tools.';
+    showModal(()=>(ui`<h2>Couldn’t export PDF</h2><p>${esc(tr(message))}</p>${button(tr('Close'),'close-modal','','primary')}`));
   }
 }
 function libraryImportPreview(){
