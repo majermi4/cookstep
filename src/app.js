@@ -376,6 +376,19 @@ function chatGPTSettings(){
 async function downloadRecipes(records,wholeLibrary){
   toast(tr('Preparing your ZIP…'));try{const blob=await exportRecipes(records,wholeLibrary),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=wholeLibrary?'cookstep-library.zip':(records[0].recipe.title.replace(/[^a-z0-9]+/gi,'-').slice(0,80)||'recipe')+'.cookstep.zip';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);toast(tr('ZIP ready. Keep it as a backup or import it into Cookstep.'));}catch(error){showModal(()=>(ui`<h2>Couldn’t export recipes</h2><p>${esc(translateMessage(error.message))}</p>${button(tr('Close'),'close-modal','','primary')}`));}
 }
+async function downloadRecipePdf(record,yieldTarget){
+  toast(tr('Preparing your PDF…'));
+  try{
+    const {createRecipePdf,recipePdfFilename}=await import('./recipe-pdf.js');
+    const exported=localized(record),blob=await createRecipePdf(record,yieldTarget);
+    const url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download=recipePdfFilename(exported.recipe.title);document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    toast(tr('PDF ready. Share the downloaded file with anyone.'));
+  }catch{
+    showModal(()=>(ui`<h2>Couldn’t export PDF</h2><p>Try again. If you are offline, reconnect once to finish downloading the export tools.</p>${button(tr('Close'),'close-modal','','primary')}`));
+  }
+}
 function libraryImportPreview(){
   const matches=pendingLibrary.filter(record=>library.some(r=>r.id===record.id)).length;
   showModal(()=>(ui`<h2>Import ${pendingLibrary.length} recipes</h2><p>Review each recipe before saving. ${matches?ui`${matches} saved recipe${matches===1?'':'s'} share these IDs. Choose whether to replace them or keep copies.`:tr('These recipes will be added to your library.')}</p>${pendingLibrary.map(record=>ui`<details class="panel"><summary>${esc(record.recipe.title)} · ${record.recipe.steps.length} steps</summary>${ingredientsHtml(record,1,'original')}${stepsHtml(record,1,'original')}</details>`).join('')}<div class="button-stack">${button(matches?tr('Import and replace matching recipes'):tr('Save recipes'),'save-library','','primary')}${matches?button(tr('Import and keep separate copies'),'copy-library'):''}${button(tr('Cancel import'),'cancel-library')}</div>`));
@@ -395,11 +408,12 @@ async function handleAction(el){
   if(action==='copy-shopping'){const text=shoppingText(shopping);try{await navigator.clipboard.writeText(text);toast(tr('Shopping list copied, with quantities and purchase checks.'));}catch{showModal(()=>(ui`<h2>Copy shopping list</h2><textarea rows="14" readonly aria-label="Shopping list text">${esc(text)}</textarea>`));}return;}
   if(action==='chatgpt'){chatGPTSettings();return;}
   if(action==='export-library'||action==='export-recipe'){if(modal.open)modal.close();await downloadRecipes(action==='export-library'?library:[selected],action==='export-library');return;}
+  if(action==='export-recipe-pdf'){if(modal.open)modal.close();await downloadRecipePdf(selected,target);return;}
   if(action==='save-library'||action==='copy-library'){let records=pendingLibrary;if(!records)return;if(action==='copy-library')records=records.map(record=>{if(!library.some(r=>r.id===record.id))return record;const id=crypto.randomUUID();return {...record,id,recipe:{...record.recipe,id}};});await changeRecipes(records);pendingLibrary=null;library=await read('recipes');view='library';modal.close();render();toast(tr('Library saved. Syncing recipes…'));void cloud.sync();return;}
   if(action==='cancel-library'){pendingLibrary=null;modal.close();return;}
   if(action==='copy-chatgpt-prompt'){try{await navigator.clipboard.writeText(document.querySelector('#chatgpt-prompt').value);toast(tr('Prompt copied. Paste it into ChatGPT with Cookstep selected.'));}catch{toast(tr('Select and copy the prompt shown in this window.'));}return;}
   if(action==='library-options'){showModal(()=>(ui`<h2>Library options</h2><div class="button-stack">${button(tr('Import recipes'),'import','','secondary','upload')}${button(tr('Export library ZIP'),'export-library',library.length?'':'disabled','secondary','book')}</div>`));return;}
-  if(action==='recipe-options'){showModal(()=>(ui`<h2>Recipe options</h2><div class="button-stack">${button(tr('Export recipe ZIP'),'export-recipe','','secondary','upload')}</div>`));return;}
+  if(action==='recipe-options'){showModal(()=>(ui`<h2>Recipe options</h2><div class="button-stack">${button(tr('Export recipe PDF'),'export-recipe-pdf','','secondary','book')}${button(tr('Export recipe ZIP'),'export-recipe','','secondary','upload')}</div><p class="muted small">The PDF uses the current language and selected recipe yield. Share it with anyone; no Cookstep account is needed.</p>`));return;}
   if(action==='sync-library'){void cloud.sync();return;}
   if(action==='settings'){settings();return;}
   if(action==='theme-settings'){themeSettings();return;}

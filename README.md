@@ -36,7 +36,7 @@ Cookstep gives each part of a meal its own place. Switch between the main dish a
 | A recipe for two, dinner for six | Scaled ingredient amounts and shopping lists, with ingredient notes kept alongside. |
 | A tablet covered in fingerprints | Large controls, readable steps, optional fullscreen, and screen wake lock where supported. |
 | An unreliable kitchen connection | An installable PWA with saved recipes, images, lists, and cooking progress available offline after the initial download. |
-| A recipe worth keeping | ZIP exports preserve the recipe and its images together. Export your whole library too. |
+| A recipe worth keeping | Share a PDF with anyone, or keep ZIP backups with the recipe and its images. Export your whole library too. |
 
 **English, Spanish, and Czech.** Switch the interface language on any page, including while cooking. Prepared recipes support all three translations under the same recipe ID.
 
@@ -85,6 +85,8 @@ With the hosted Cookstep connection enabled, try:
 > “Update my quesadilla recipe to use less cheese and keep the existing photos.”
 
 ChatGPT can find, read, add, and update recipes, including their images. Existing edits use revision checks to protect against overwriting a newer version. The [preparation guide](https://cookstep-recipe-guide.alightslug4.chatgpt.site/) explains how to structure a cooking-ready recipe; [the format reference](RECIPE_FORMAT.md) documents the portable JSON/ZIP contract.
+
+To share a recipe, open **Recipe options → Export recipe PDF**. The download uses the current language and selected yield, including ingredients, equipment, every cooking task, timer instructions, photos, notes and source links. Recipients can read it without a Cookstep account. Export also works offline after the app has cached its PDF tools. ZIP export remains available for Cookstep backups and imports.
 
 ## Try it locally
 

@@ -1,5 +1,17 @@
 // English message templates map to Spanish and Czech. Interpolation stays outside translation.
 export const messages = {
+  "Export recipe PDF": ["Exportar receta en PDF", "Exportovat recept do PDF"],
+  "Preparing your PDF…": ["Preparando tu PDF…", "Připravuji PDF…"],
+  "PDF ready. Share the downloaded file with anyone.": ["PDF listo. Comparte el archivo descargado con quien quieras.", "PDF je připravené. Stažený soubor můžeš sdílet s kýmkoli."],
+  "Couldn’t export PDF": ["No se pudo exportar el PDF", "PDF se nepodařilo exportovat"],
+  "Try again. If you are offline, reconnect once to finish downloading the export tools.": ["Inténtalo de nuevo. Si no tienes conexión, conéctate una vez para terminar de descargar las herramientas de exportación.", "Zkus to znovu. Pokud jsi offline, připoj se jednou k internetu pro dokončení stažení nástrojů pro export."],
+  "The PDF uses the current language and selected recipe yield. Share it with anyone; no Cookstep account is needed.": ["El PDF usa el idioma actual y la cantidad seleccionada. Compártelo con quien quieras; no hace falta una cuenta de Cookstep.", "PDF použije aktuální jazyk a zvolené množství receptu. Můžeš ho sdílet s kýmkoli; účet Cookstep není potřeba."],
+  "Start: {0}": ["Inicio: {0}", "Spustit: {0}"],
+  "Ready when: {0}": ["Listo cuando: {0}", "Hotovo, když: {0}"],
+  "people": ["personas", "osob"],
+  "Page": ["Página", "Strana"],
+  "of": ["de", "z"],
+  "Sources": ["Fuentes", "Zdroje"],
   "Total time": ["Tiempo total", "Celkový čas"],
   "Time not specified": ["Tiempo no especificado", "Čas není uveden"],
   "Includes preparation, cooking and waiting; parallel tasks overlap.": ["Incluye preparación, cocción y esperas; las tareas paralelas se solapan.", "Zahrnuje přípravu, vaření a čekání; souběžné úkoly se překrývají."],
