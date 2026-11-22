@@ -1,6 +1,7 @@
+import {preparePhoto,suggestedDate,validDate} from './photo-history.js';
 import {t as tr,ui,uiText,getLocale,setLocale,LOCALES,translateMessage} from './i18n.js';
 import {localizeRecipe,recipeText} from './recipe-locales.js';
-import {formatQuantity,formatTemperature,formatTotalTime,number,taskSteps,createSession,startTimer,timerState,clockText,safeUrl} from './model.js';
+import {formatQuantity,formatTemperature,formatTotalTime,number,taskSteps,createSession,startTimer,timerState,clockText,safeUrl,validateRecipe,LIMITS} from './model.js';
 import {read,write,changeRecipes} from './storage.js';
 import {createLibrarySync} from './sync.js';
 import {importRecipes,exportRecipes} from './recipe-archive.js';
@@ -41,7 +42,7 @@ const icons = {
 };
 const icon = name => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.pot}</svg>`;
 const button = (label,action,attrs='',style='secondary',symbol='') => `<button class="btn ${style}" data-action="${action}" ${attrs}>${symbol ? icon(symbol) : ''}${label}</button>`;
-let pendingLibrary=null,modalFactory=null,pendingStart=null;
+let pendingLibrary=null,modalFactory=null,pendingStart=null,photoTarget=null,photoDraft=null;
 let shoppingLists=[],shopping=null,shoppingMode='yield',shoppingRemaining=false,shoppingSettingsOpen=false,shoppingSaved=true;
 let batchName = '', idleTimerPanelOpen = false, actionQueue = Promise.resolve();
 let library = [], session = null, selected = null, view = 'library', search = '', target = 1, pending = null, importing = false;
@@ -61,7 +62,7 @@ const pwa=createPwa({
   },
   installHelp:()=>showModal(()=>ui`<h2>Install Cookstep</h2><p>On iPhone or iPad, open Cookstep in Safari, tap Share, then Add to Home Screen. In other browsers, use Install app in the browser menu.</p>${button(tr('Done'),'close-modal','','primary')}`),
 });
-function updateSafe(){return !session&&sessionSaved&&shoppingSaved&&!storageError&&!pending&&!pendingLibrary&&!importing&&!pendingStart&&!modal.querySelector('#manual-form');}
+function updateSafe(){return !session&&sessionSaved&&shoppingSaved&&!storageError&&!pending&&!pendingLibrary&&!importing&&!pendingStart&&!modal.querySelector('#manual-form')&&!photoDraft;}
 function pwaSettings(){
   const state=pwa.state;
   return ui`<section id="pwa-settings" class="pwa-settings"><h3>App & updates</h3><p>${esc(tr(state.error?'Offline setup could not finish. Reconnect and reopen Cookstep to retry.':state.ready?'Ready offline · saved recipes available on this device':state.supported?'Preparing offline access…':'Offline installation is unavailable in this browser.'))}</p><div class="button-row">${state.installed?`<span>${esc(tr('Cookstep is installed'))}</span>`:button(tr('Install Cookstep'),'install-app')}${state.update?button(tr('Update now'),'update-app',updateSafe()?'':'disabled','primary'):button(tr('Check for updates'),'check-app-update')}</div><p id="pwa-feedback" class="pwa-feedback" role="status" aria-atomic="true">${esc(tr(pwaFeedback))}</p><p class="muted small pwa-help">${esc(tr('Install once. Future versions download automatically. Updates wait until you finish cooking.'))}</p></section>`;
@@ -217,10 +218,42 @@ function stepsHtml(record,factor) {
   const groups = [{id:'main',title:tr('Main guide')},...(localized(record).recipe.components || [])];
   return groups.map(g => { const steps = taskSteps(localized(record).recipe,g.id); return steps.length ? ui`<section><h3 class="task-heading">${esc(g.title)} <span>${steps.length} steps</span></h3>${steps.map((s,i) => stepPreview(record,s,factor,i)).join('')}</section>` : ''; }).join('');
 }
+function historyGallery(record) {
+  const occasions=[...(record.recipe.cookingHistory||[])].sort((a,b)=>b.date.localeCompare(a.date));
+  return `<section class="panel cooking-history"><div class="section-heading"><div><h2>Cooking photos</h2><p class="muted small">Your meals, together in the shared library.</p></div>${button('Add photos','history-add','','secondary','upload')}</div>${occasions.length?occasions.map(o=>`<article class="history-occasion"><div class="history-photos">${o.photoIds.map(id=>`<div class="history-photo"><button class="history-open" data-action="history-view" data-id="${esc(id)}" aria-label="View cooking photo">${image(record,id)}</button>${button('Remove photo','history-remove-photo',`data-id="${esc(o.id)}" data-photo="${esc(id)}"`,'secondary')}</div>`).join('')}</div><div class="history-meta"><div><strong>${esc(o.date)}</strong>${o.note?`<p class="pre-wrap">${esc(o.note)}</p>`:''}</div><div class="button-row">${button('Add photos','history-add',`data-id="${esc(o.id)}"`)}${button('Edit','history-edit',`data-id="${esc(o.id)}"`)}${button('Delete occasion','history-delete',`data-id="${esc(o.id)}"`)}</div></div></article>`).join(''):'<p class="muted">Add photos to remember a meal.</p>'}</section>`;
+}
+async function saveHistory(record) {
+  // Keep text overlays aligned with the image list, including removed photos.
+  if(record.recipe.translations)for(const overlay of Object.values(record.recipe.translations)){
+    const old=overlay.images||[];overlay.images=(record.recipe.images||[]).map(im=>old.find(x=>x.id===im.id)||{id:im.id,alt:im.alt,...(im.caption?{caption:im.caption}:{})});
+  }
+  const errors=validateRecipe(record.recipe,new Set((record.recipe.images||[]).map(im=>im.path)));
+  if(errors.length)throw Error(errors[0]);
+  if(Object.values(record.assets||{}).reduce((sum,blob)=>sum+blob.size,0)>LIMITS.expanded)throw Error('Recipe photos exceed the 80 MB storage limit. Remove some photos first.');
+  record.savedAt=Date.now();await write('recipes',record);library=await read('recipes');selected=library.find(r=>r.id===record.id);render();void cloud.sync();
+}
+function historyForm(draft) {
+  const occasion=draft.occasion;
+  showModal(()=>`<form id="history-form"><h2>${draft.newPhotos.length?'Save cooking photos':'Edit occasion'}</h2><p class="muted small">${draft.newPhotos.length?`${draft.newPhotos.length} photo${draft.newPhotos.length===1?'':'s'} selected. `:''}The date and note can be changed later.</p><label class="field-label" for="history-date">Date</label><input id="history-date" name="date" type="date" required value="${esc(occasion.date)}"><label class="field-label" for="history-note">Note (optional)</label><textarea id="history-note" name="note" maxlength="5000" rows="3">${esc(occasion.note||'')}</textarea><div class="button-row"><button class="btn primary" type="submit">Save occasion</button>${button('Cancel','history-cancel','type="button"')}</div></form>`);
+}
+async function chooseHistoryPhotos(files){
+  if(!files.length)return;
+  const recipeId=photoTarget?.recipeId,occasionId=photoTarget?.occasionId;
+  try {
+    toast('Preparing photos…');const prepared=[];
+    for(const file of files)prepared.push(await preparePhoto(file));
+    const record=await read('recipes',recipeId);if(!record)throw Error('This recipe is no longer available.');
+    const existing=occasionId&&record.recipe.cookingHistory?.find(o=>o.id===occasionId);
+    if(occasionId&&!existing)throw Error('This occasion is no longer available.');
+    photoDraft={recipeId,occasion:existing?structuredClone(existing):{id:crypto.randomUUID(),date:suggestedDate(prepared.map(p=>p.date)),photoIds:[]},newPhotos:prepared};historyForm(photoDraft);
+  } catch(error){showModal(()=>`<h2>Couldn’t add photos</h2><p>${esc(error.message||'Please try different photos.')}</p><p class="muted small">Try JPEG or PNG if your browser cannot open the selected format.</p>${button('Close','close-modal','','primary')}`);}
+  finally {photoTarget=null;document.querySelector('#history-file').value='';}
+}
 function overviewScreen(record,isImport=false) {
   const r = localized(record).recipe, factor = isImport ? 1 : target/r.yield.quantity;
   const isCurrentMeal=session?.record.id===record.id;
   return ui`<main class="overview-page"><div class="overview-toolbar"><button class="back-link" data-action="library">${icon('left')} Back to recipes</button>${!isImport?button('','recipe-options',uiText('aria-label="Recipe options" aria-haspopup="dialog"'),'quiet-options','more'):''}</div>${translationNotice(record.recipe)}<div class="overview-heading ${r.coverImageId&&record.assets?.[r.coverImageId]?'has-cover':''}"><div class="overview-title"><div class="eyebrow">${isImport ? tr('IMPORT PREVIEW · FORMAT 0.2') : tr('LET’S GET EVERYTHING READY')}</div><h1>${esc(r.title)}</h1><p>${esc(r.description || tr('A good meal starts with a little preparation.'))}</p><div class="overview-facts">${icon('pot')} ${yieldLabel(r)} <span>·</span> ${r.steps.length} steps</div>${recipeTime(r)}</div>${r.coverImageId?image(record,r.coverImageId,true):''}${botanical()}${cozyArt()}</div>
+  ${!isImport?historyGallery(record):''}
   ${isImport ? uiText('<div class="notice">Package validated. Review the ingredients, steps, images and timer suggestions before saving.</div>') : ''}
   <div class="overview-grid"><div><section class="panel"><div class="section-heading"><h2>On the counter</h2><span class="pill">${r.ingredients.length} ingredients</span></div>${ingredientsHtml(record,factor)}</section><details class="panel steps-details" ${isImport ? 'open' : ''}><summary>Read through the steps <span>${r.steps.length} steps ${icon('chevron')}</span></summary>${stepsHtml(record,factor)}</details>${r.notes?.length ? ui`<section class="panel notes"><h2>Recipe notes</h2>${r.notes.map(n=>`<p>${esc(n)}</p>`).join('')}</section>` : ''}${r.sources?.length ? ui`<details class="panel"><summary>Sources & original text</summary>${sourceHtml(r)}</details>` : ''}</div>
   <aside class="prep-sidebar"><section class="panel yield-panel"><h2>${isImport ? tr('Recipe yield') : tr('Make it your own')}</h2>${isImport ? `<p class="yield-value">${yieldLabel(r)}</p>` : ui`<label class="field-label" for="target">How many ${esc(r.yield.unit)}?</label><div class="yield-control">${button('−','yield-minus',uiText('aria-label="Decrease yield"'),'icon-button')}<input id="target" type="number" min="0.01" max="100000" step="any" value="${target}" inputmode="decimal">${button('+','yield-plus',uiText('aria-label="Increase yield"'),'icon-button')}</div><p class="muted small">Original recipe: ${yieldLabel(r)}${r.servings && record.recipe.yield.unit !== 'servings' ? ui` · ${r.servings} people` : ''}</p><p class="muted small">Amounts scale. Cooking times stay the same.<br>Keep batch sizes and doneness cues in mind.</p>`}
@@ -397,6 +430,19 @@ function libraryImportPreview(){
 async function importFile(file){if(!file||importing)return;importing=true;toast(tr('Checking your recipe package…'));try{const records=await importRecipes(file);if(records.length>1){pendingLibrary=records;libraryImportPreview();return;}pending=records[0];view='import';await releaseWake();render();window.scrollTo(0,0);}catch(e){showModal(()=>(ui`<div class="eyebrow">PACKAGE NEEDS A LITTLE WORK</div><h2>Couldn’t import this recipe</h2><p>${esc(translateMessage(e.message))}</p>${e.details?`<ul class="validation-errors">${e.details.map(x=>`<li>${esc(translateMessage(x))}</li>`).join('')}</ul>`:''}<p class="muted">Correct the package with your AI preparer, then try again. Nothing has been saved.</p>${button(tr('Choose another file'),'import','','primary','upload')}`));}finally{importing=false;document.querySelector('#file-input').value='';}}
 async function handleAction(el){
   const action=el.dataset.action,id=el.dataset.id;
+  if(action==='history-view'){showModal(()=>`<h2>Cooking photo</h2><div class="history-full">${image(selected,id)}</div>${button('Close','close-modal','','primary')}`);return;}
+  if(action==='history-add'){photoTarget={recipeId:selected.id,occasionId:id||null};document.querySelector('#history-file').click();return;}
+  if(action==='history-cancel'){photoDraft=null;modal.close();return;}
+  if(action==='history-edit'){const occasion=selected.recipe.cookingHistory?.find(o=>o.id===id);if(occasion){photoDraft={recipeId:selected.id,occasion:structuredClone(occasion),newPhotos:[]};historyForm(photoDraft);}return;}
+  if(action==='history-delete'||action==='history-remove-photo'){const photo=el.dataset.photo;showModal(()=>`<h2>${photo?'Remove this photo?':'Delete this occasion?'}</h2><p>This change will sync to the shared library. Originals remain in your photo library.</p>${button(photo?'Remove photo':'Delete occasion','history-confirm-delete',`data-id="${esc(id)}" ${photo?`data-photo="${esc(photo)}"`:''}`,'danger')}${button('Cancel','close-modal')}`);return;}
+  if(action==='history-confirm-delete'){
+    const record=await read('recipes',selected.id),occasion=record?.recipe.cookingHistory?.find(o=>o.id===id);if(!occasion){modal.close();return;}
+    const remove=el.dataset.photo?[el.dataset.photo]:occasion.photoIds;const remaining=occasion.photoIds.filter(x=>!remove.includes(x));
+    record.recipe.cookingHistory=record.recipe.cookingHistory.filter(o=>o.id!==id);if(remaining.length)record.recipe.cookingHistory.push({...occasion,photoIds:remaining});
+    const inRecipe=new Set([record.recipe.coverImageId,...record.recipe.steps.flatMap(step=>step.imageIds||[])]);
+    const unused=remove.filter(key=>!inRecipe.has(key));record.recipe.images=(record.recipe.images||[]).filter(im=>!unused.includes(im.id));for(const key of unused)delete record.assets[key];
+    await saveHistory(record);modal.close();toast('Photo history updated. Syncing…');return;
+  }
   if(action==='update-app'){void pwa.update();return;}
   if(action==='check-app-update'){await pwa.check(true);return;}
   if(action==='install-app'){void pwa.install();return;}
@@ -418,7 +464,7 @@ async function handleAction(el){
   if(action==='sync-library'){void cloud.sync();return;}
   if(action==='settings'){settings();return;}
   if(action==='theme-settings'){themeSettings();return;}
-  if(action==='close-modal'){pendingLibrary=null;pendingStart=null;modal.close();return;}
+  if(action==='close-modal'){pendingLibrary=null;pendingStart=null;photoDraft=null;modal.close();return;}
   if(action==='import'){if(modal.open)modal.close();document.querySelector('#file-input').click();return;}
   if(action==='example'){const data=await fetch('./examples/recipe.json').then(r=>r.text());await importFile(new File([data],'recipe.json',{type:'application/json'}));return;}
   if(action==='library'){if(modal.open)modal.close();await releaseWake();view='library';render();window.scrollTo(0,0);return;}
@@ -459,6 +505,7 @@ async function handleAction(el){
 async function databaseRetry(){try{if(shopping)await saveShopping();if(!shoppingSaved)return;if(session)await write('sessions',session);if(pending)toast(tr('Storage available. Save the import when ready.'));library=await read('recipes');storageError='';sessionSaved=true;render();}catch(e){storageFailure(e);}}
 function enqueue(fn){actionQueue=actionQueue.then(fn).catch(e=>{if(e.name==='QuotaExceededError'||e.name==='UnknownError')storageFailure(e);else toast(e.message||tr('Something went wrong. Please try again.'));});}
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(el&&!el.disabled){if(el.dataset.action==='fullscreen'){toggleFullscreen();return;}if(['start','resume','sound','start-timer'].includes(el.dataset.action))activateAudio();enqueue(()=>handleAction(el));}});
+modal.addEventListener('close',()=>{photoDraft=null;});
 document.addEventListener('fullscreenchange',updateFullscreenButton);
 document.addEventListener('webkitfullscreenchange',updateFullscreenButton);
 document.addEventListener('change',e=>{
@@ -501,8 +548,16 @@ document.addEventListener('keydown',e=>{
   enqueue(async()=>{if(view==='cooking'&&session&&!modal.open)await browseStep(e.key==='ArrowLeft'?-1:1);});
 });
 document.addEventListener('toggle',e=>{if(e.target.matches('.shopping-settings-panel'))shoppingSettingsOpen=e.target.open;if(e.target.matches('.timer-panel')&&!session?.timers.some(t=>!t.stoppedAt))idleTimerPanelOpen=e.target.open;},true);
-document.addEventListener('change',e=>{if(e.target.id==='file-input'){const file=e.target.files[0];enqueue(()=>importFile(file));}if(e.target.id==='target'){const n=Number(e.target.value);if(n>0&&n<=100000){target=n;render();}else{toast(tr('Choose a yield between 0.01 and 100,000.'));e.target.value=target;}}if(e.target.id==='timer-mode'){const elapsed=e.target.value==='elapsed';document.querySelector('#duration-field').hidden=elapsed;document.querySelector('#timer-minutes').required=!elapsed;}});
+document.addEventListener('change',e=>{if(e.target.id==='history-file'){const files=[...e.target.files];enqueue(()=>chooseHistoryPhotos(files));}if(e.target.id==='file-input'){const file=e.target.files[0];enqueue(()=>importFile(file));}if(e.target.id==='target'){const n=Number(e.target.value);if(n>0&&n<=100000){target=n;render();}else{toast(tr('Choose a yield between 0.01 and 100,000.'));e.target.value=target;}}if(e.target.id==='timer-mode'){const elapsed=e.target.value==='elapsed';document.querySelector('#duration-field').hidden=elapsed;document.querySelector('#timer-minutes').required=!elapsed;}});
 document.addEventListener('input',e=>{if(e.target.id==='batch-name')batchName=e.target.value;if(e.target.id==='search'){search=e.target.value;render();}});
+document.addEventListener('submit',e=>{if(e.target.id!=='history-form')return;e.preventDefault();const form=e.target;enqueue(async()=>{try{
+  const draft=photoDraft;if(!draft)return;const fields=new FormData(form),date=String(fields.get('date')),note=String(fields.get('note')).trim();if(!validDate(date))throw Error('Choose a valid date.');
+  const record=await read('recipes',draft.recipeId);if(!record)throw Error('This recipe is no longer available.');
+  const current=record.recipe.cookingHistory?.find(o=>o.id===draft.occasion.id);if(draft.occasion.photoIds.length&&!current)throw Error('This occasion is no longer available.');
+  const occasion={id:draft.occasion.id,date,...(note?{note}:{}),photoIds:[...(current?.photoIds||[])]};record.recipe.images=[...(record.recipe.images||[])];record.assets={...record.assets};
+  for(const photo of draft.newPhotos){const id=crypto.randomUUID();occasion.photoIds.push(id);record.recipe.images.push({id,path:`images/history-${id}.jpg`,alt:'Cooking photo',kind:'photo',origin:'user_supplied'});record.assets[id]=photo.blob;}
+  record.recipe.cookingHistory=[...(record.recipe.cookingHistory||[]).filter(o=>o.id!==occasion.id),occasion];await saveHistory(record);photoDraft=null;modal.close();toast('Cooking photos saved. Syncing…');
+  }catch(error){toast(error.message||'Could not save photos. Try again.');}});});
 document.addEventListener('submit',async e=>{if(e.target.id!=='manual-form')return;e.preventDefault();const fields=new FormData(e.target),mode=fields.get('mode'),durationSeconds=Math.round(Number(fields.get('minutes'))*60);if(mode==='countdown'&&(!Number.isSafeInteger(durationSeconds)||durationSeconds<1)){toast(tr('Choose a countdown of at least one second.'));return;}await activateAudio();const t={id:'manual',label:fields.get('label').trim(),mode,...(mode==='countdown'?{durationSeconds}:{})};session.timers.push(startTimer(session,t,currentStep(),Date.now(),fields.get('batch')));await saveSession();modal.close();render();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){updateTimers();if(view==='cooking')requestWake();}else releaseWake();});
 window.addEventListener('pagehide',()=>{if(session)saveSession();});

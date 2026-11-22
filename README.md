@@ -104,6 +104,8 @@ Open **http://127.0.0.1:4173** and choose **Try the example**. You can explore t
 
 The static demo stores your work in this browser. Cross-device recipe sync and direct ChatGPT edits require the full hosted app, which uses ChatGPT Sites identity plus Cloudflare D1/R2 storage. The existing hosted collection is private; this public repository is the source code. See the [developer guide](docs/DEVELOPMENT.md#run-locally) to run the full server locally.
 
+Cooking photos are grouped by occasion on each recipe overview. Add, edit, or remove them from the shared library; changes queue offline and sync with the recipe. Cookstep reads JPEG capture dates when available, suggests the earliest selected date, and otherwise uses today. You can change the date and add a note. Photos are resized to at most 1,920 pixels on the long side and saved as JPEG without original EXIF metadata; your originals remain in your photo library. Device and browser support determines whether other formats, such as HEIC, can be opened. Recipe and library ZIP backups include these photos and dates, subject to the existing ZIP size limits. Concurrent edits to the same recipe use the existing conflict-copy behavior.
+
 Timers require the app to be open for alerts; background and lock-screen notifications are not supported. Shopping lists, cooking sessions, and timers stay on each device. Physical iPhone/iPad installation, sound, and screen wake behavior still need device-specific verification.
 
 ## Build on Cookstep

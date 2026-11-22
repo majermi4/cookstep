@@ -130,6 +130,21 @@ export function validateRecipe(r, files = null) {
     if (!files) fail(`${p}.path`,'standalone JSON cannot include images; bundle the file in a ZIP');
     else if (!files.has(im.path)) fail(`${p}.path`, `missing bundled file “${im.path}”`);
   });
+  if (r.cookingHistory !== undefined) {
+    if (!Array.isArray(r.cookingHistory) || r.cookingHistory.length > 2000) fail('cookingHistory','must be an array with at most 2,000 occasions');
+    else {
+      const seen=new Set(), used=new Set();
+      r.cookingHistory.forEach((occasion,i)=>{const p=`cookingHistory[${i}]`;
+        if(!object(occasion)){fail(p,'must be an object');return;}
+        str(occasion.id,`${p}.id`);if(seen.has(occasion.id))fail(`${p}.id`,'must be unique');seen.add(occasion.id);
+        const date=occasion.date, parsed=typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date)?new Date(date+'T00:00:00Z'):null;
+        if(!parsed||Number.isNaN(parsed.valueOf())||parsed.toISOString().slice(0,10)!==date)fail(`${p}.date`,'must be a valid date');
+        if(occasion.note!==undefined&&(typeof occasion.note!=='string'||occasion.note.length>5000))fail(`${p}.note`,'must be text of at most 5,000 characters');
+        if(!Array.isArray(occasion.photoIds)||!occasion.photoIds.length)fail(`${p}.photoIds`,'must contain at least one photo');
+        else occasion.photoIds.forEach(id=>{ref(id,imageIds,`${p}.photoIds`);if(used.has(id))fail(`${p}.photoIds`,'photo belongs to more than one occasion');used.add(id);const im=images.find(x=>x?.id===id);if(im&&(im.kind!=='photo'||im.origin!=='user_supplied'))fail(`${p}.photoIds`,'must refer to user photos');});
+      });
+    }
+  }
   if (r.coverImageId !== undefined) ref(r.coverImageId,imageIds,'coverImageId');
   return errors.length?errors:validateTranslations(r);
 }

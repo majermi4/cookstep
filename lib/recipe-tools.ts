@@ -67,7 +67,7 @@ export async function callRecipeTool(user:string,name:string,args:any) {
   if(name==='save_recipe'){
     if(!args.recipe?.translations)throw new CloudError('Push complete translations.en, translations.es and translations.cs on every recipe save. Read get_recipe_format for the text overlay contract.');
     if(!Object.hasOwn(args,'expectedRevision'))throw new CloudError('expectedRevision is required. Read the existing recipe first, or use null to add.');
-    const recipe=args.recipe,assets={...args.assets};
+    let recipe=args.recipe; const assets={...args.assets};
     if(args.assets&&(typeof args.assets!=='object'||Array.isArray(args.assets)))throw new CloudError('Invalid image asset references.');
     if(args.expectedRevision!==null){
       const current=await get(user,recipe?.id);
@@ -75,6 +75,15 @@ export async function callRecipeTool(user:string,name:string,args:any) {
       // response was lost. The shared mutation layer checks the same token.
       if(current.revision===args.mutationId)return {id:recipe.id,revision:current.revision,saved:true};
       if(current.revision!==args.expectedRevision)throw new CloudError('Recipe changed since you read it. Read it again and reconcile your edit.',409);
+      // History is managed in the app; ordinary AI recipe edits must not erase it.
+      if(current.recipe.cookingHistory?.length){
+        const ids=new Set(current.recipe.cookingHistory.flatMap((o:any)=>o.photoIds));
+        recipe={...recipe,cookingHistory:current.recipe.cookingHistory,images:[...(recipe.images||[]).filter((im:any)=>!ids.has(im.id)),...(current.recipe.images||[]).filter((im:any)=>ids.has(im.id))]};
+        for(const locale of ['en','es','cs'])if(recipe.translations?.[locale]){
+          const overlay=recipe.translations[locale],previous=current.recipe.translations?.[locale]?.images||[];
+          overlay.images=recipe.images.map((im:any)=>overlay.images?.find((x:any)=>x.id===im.id)||previous.find((x:any)=>x.id===im.id)||{id:im.id,alt:im.alt,...(im.caption?{caption:im.caption}:{})});
+        }
+      }
       for(const image of recipe?.images||[]){
         const previous=current.recipe.images?.find((im:any)=>im.id===image.id&&im.path===image.path);
         if(!assets[image.id]&&previous)assets[image.id]=current.assets?.[image.id];

@@ -93,7 +93,7 @@ export function metricRecipe(recipe,{strict=false}={}){
     }
   }
   function walk(input,key=''){
-    if(key==='translations')return input;
+    if(key==='translations'||key==='cookingHistory')return input;
     if(typeof input==='string')return ['id','ingredientId','componentId','coverImageId','path','url','sourceUrl','author','language','formatVersion','unit'].includes(key)||key.endsWith('Ids')?input:metricText(input,context,strict);
     if(Array.isArray(input))return input.map(v=>walk(v,key));
     if(!input||typeof input!=='object')return input;
