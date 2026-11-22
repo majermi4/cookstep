@@ -11,6 +11,15 @@ test('phone gallery combines occasions and keeps details and controls in the vie
     await page.locator('#history-date').fill(date);await page.locator('#history-note').fill(note);await page.locator('#history-form button[type=submit]').click();
   }
   await expect(page.locator('.history-photos')).toHaveCount(1);await expect(page.locator('.history-open')).toHaveCount(2);
+  for(const width of [320,390,600]){
+    await page.setViewportSize({width,height:844});
+    const gallery=await page.locator('.cooking-history').boundingBox();
+    const heading=await page.locator('.history-heading').boundingBox();
+    const servings=await page.locator('.yield-panel h2').boundingBox();
+    expect({left:gallery.x,right:gallery.x+gallery.width}).toEqual({left:0,right:width});
+    expect({left:heading.x,right:heading.x+heading.width}).toEqual({left:servings.x,right:servings.x+servings.width});
+  }
+  await page.setViewportSize({width:390,height:844});
   await expect(page.locator('.cooking-history')).not.toContainText('Family dinner');await expect(page.locator('.cooking-history')).not.toContainText('2024');
   await page.locator('[data-action="history-view"]').first().click();await expect(page.locator('.history-details')).toContainText('May 14, 2024');await expect(page.locator('.history-details')).toContainText('Another meal');
   await expect(page.locator('.history-count')).toHaveText('1 / 2');await expect(page.locator('[data-action="history-previous"]')).toHaveCount(0);

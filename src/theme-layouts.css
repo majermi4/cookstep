@@ -441,14 +441,14 @@ html[data-layout="studio"]{background:var(--surface)}
 @media(max-width:600px){
   .library-page,.overview-page,.shopping-page,.cooking-page{padding-left:16px;padding-right:16px}
   .recipe-grid,[data-layout="studio"] .recipe-grid{grid-template-columns:minmax(0,1fr)}
-  .recipe-grid,.empty-library,.resume-banner,.saved-shopping,.overview-heading,.overview-grid,.cooking-grid{margin-left:-16px;margin-right:-16px}
+  .recipe-grid,.empty-library,.resume-banner,.saved-shopping,.overview-heading,.cooking-history,.overview-grid,.cooking-grid{margin-left:-16px;margin-right:-16px}
   .recipe-card,[data-layout] .recipe-card,.empty-library,[data-layout] .empty-library,.resume-banner,.saved-shopping,
   .overview-heading,[data-layout] .overview-heading.has-cover,
-  .overview-grid .panel,.shopping-page .panel,.current-step,[data-layout] .current-step,.timer-panel{
+  .cooking-history,.overview-grid .panel,.shopping-page .panel,.current-step,[data-layout] .current-step,.timer-panel{
     border-left:0;border-right:0;border-radius:0;
   }
   .card-content,[data-layout] .card-content,.empty-copy,.resume-banner,.saved-shopping,
-  .overview-title,[data-layout] .overview-title,.overview-grid .panel,
+  .overview-title,[data-layout] .overview-title,.cooking-history,.overview-grid .panel,
   .shopping-page .panel,.current-step,[data-layout] .current-step,.timer-panel{padding-left:16px;padding-right:16px}
   .overview-heading,[data-layout] .overview-heading.has-cover{padding-left:0;padding-right:0}
   .recipe-card .cover,[data-layout] .recipe-card .cover,
