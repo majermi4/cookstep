@@ -631,23 +631,20 @@ dialog .cooking-menu-actions .btn{justify-content:flex-start;min-height:48px}
 .overview-title .recipe-time{font-size:14px}
 /* Photo history keeps the controls quiet and the images easy to scan. */
 .cooking-history { margin: 1.5rem 0; }
-.history-heading, .history-meta { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.history-heading, .history-view-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
 .history-heading h2 { margin: 0; }
-.history-subtitle, .history-empty { color: var(--muted, #777); font-size: .9rem; margin: .35rem 0 0; }
+.history-empty { color: var(--muted, #777); font-size: .9rem; margin: .35rem 0 0; }
 .history-add, .history-menu { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border: 1px solid var(--border, #dedbd4); border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
 .history-add span { font-size: 1.65rem; font-weight: 300; line-height: 1; margin-top: -2px; }
 .history-add:hover, .history-menu:hover { background: var(--surface, #f4f0ea); }
-.history-occasion { padding-top: 1.25rem; }
-.history-occasion + .history-occasion { margin-top: 1.25rem; border-top: 1px solid var(--border, #e6e2dc); }
-.history-meta { align-items: center; margin-bottom: .65rem; }
-.history-meta time { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-.history-meta p { margin: .25rem 0 0; font-size: .9rem; }
 .history-menu { width: 36px; height: 36px; flex-basis: 36px; border: 0; }
-.history-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: .5rem; }
+.history-photos { margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: .5rem; }
 .history-open { display: block; width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .history-open figure, .history-full figure { margin: 0; }
 .history-open img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: .55rem; }
 .history-open:focus-visible, .history-menu:focus-visible, .history-add:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.history-details { color: var(--text-muted); font-size: .9rem; }
+.history-details p { margin: .35rem 0 0; }
 .history-full img { display: block; max-width: 100%; max-height: 65vh; object-fit: contain; margin: 0 auto 1rem; }
 #history-form input, #history-form textarea { display: block; width: 100%; margin-bottom: 1rem; }
 @media (max-width: 600px) { .history-photos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; } }
