@@ -222,9 +222,9 @@ function historyDate(date) {
   const [y,m,d]=date.split('-').map(Number);
   return new Intl.DateTimeFormat(getLocale()==='cs'?'cs-CZ':getLocale()==='es'?'es-ES':'en-US',{year:'numeric',month:'short',day:'numeric'}).format(new Date(y,m-1,d));
 }
+function historyPhotos(record) {return [...(record.recipe.cookingHistory||[])].sort((a,b)=>b.date.localeCompare(a.date)).flatMap(occasion=>occasion.photoIds.map(id=>({id,occasion})));}
 function historyGallery(record) {
-  const occasions=[...(record.recipe.cookingHistory||[])].sort((a,b)=>b.date.localeCompare(a.date));
-  const photos=occasions.flatMap(o=>o.photoIds.map(id=>`<button class="history-open" data-action="history-view" data-id="${esc(o.id)}" data-photo="${esc(id)}" aria-label="View cooking photo">${image(record,id)}</button>`)).join('');
+  const photos=historyPhotos(record).map(({id,occasion:o})=>`<button class="history-open" data-action="history-view" data-id="${esc(o.id)}" data-photo="${esc(id)}" aria-label="View cooking photo">${image(record,id)}</button>`).join('');
   return `<section class="panel cooking-history"><div class="history-heading"><h2>Cooking photos</h2><button class="history-add" data-action="history-add" aria-label="Add cooking photos" title="Add cooking photos"><span aria-hidden="true">+</span></button></div>${photos?`<div class="history-photos">${photos}</div>`:'<p class="history-empty">Your moments around the table belong here.</p>'}</section>`;
 }
 async function saveHistory(record) {
@@ -339,7 +339,7 @@ function render() {
   if(modal.open && modal.dataset.timers) modal.querySelector(".drawer-timers").innerHTML=timerCards();
   updateTimers();
 }
-function showModal(factory) { modalFactory=factory;const content=factory();delete modal.dataset.timers; modal.innerHTML=ui`<button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button>${content}`; modal.showModal(); }
+function showModal(factory) { modal.classList.remove('photo-viewer');modal.removeAttribute('aria-label');modalFactory=factory;const content=factory();delete modal.dataset.timers; modal.innerHTML=ui`<button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button>${content}`; modal.showModal(); }
 async function activateAudio(test=false) {
   try {
     audio ||= new (window.AudioContext || window.webkitAudioContext)();
@@ -433,9 +433,23 @@ function libraryImportPreview(){
   showModal(()=>(ui`<h2>Import ${pendingLibrary.length} recipes</h2><p>Review each recipe before saving. ${matches?ui`${matches} saved recipe${matches===1?'':'s'} share these IDs. Choose whether to replace them or keep copies.`:tr('These recipes will be added to your library.')}</p>${pendingLibrary.map(record=>ui`<details class="panel"><summary>${esc(record.recipe.title)} · ${record.recipe.steps.length} steps</summary>${ingredientsHtml(record,1,'original')}${stepsHtml(record,1,'original')}</details>`).join('')}<div class="button-stack">${button(matches?tr('Import and replace matching recipes'):tr('Save recipes'),'save-library','','primary')}${matches?button(tr('Import and keep separate copies'),'copy-library'):''}${button(tr('Cancel import'),'cancel-library')}</div>`));
 }
 async function importFile(file){if(!file||importing)return;importing=true;toast(tr('Checking your recipe package…'));try{const records=await importRecipes(file);if(records.length>1){pendingLibrary=records;libraryImportPreview();return;}pending=records[0];view='import';await releaseWake();render();window.scrollTo(0,0);}catch(e){showModal(()=>(ui`<div class="eyebrow">PACKAGE NEEDS A LITTLE WORK</div><h2>Couldn’t import this recipe</h2><p>${esc(translateMessage(e.message))}</p>${e.details?`<ul class="validation-errors">${e.details.map(x=>`<li>${esc(translateMessage(x))}</li>`).join('')}</ul>`:''}<p class="muted">Correct the package with your AI preparer, then try again. Nothing has been saved.</p>${button(tr('Choose another file'),'import','','primary','upload')}`));}finally{importing=false;document.querySelector('#file-input').value='';}}
+let viewedHistoryPhoto=null, historyTouchStart=null;
+function showHistoryPhoto(photo,focusDirection=null){
+  const photos=historyPhotos(selected),index=photos.findIndex(item=>item.id===photo);if(index<0)return;
+  const {occasion}=photos[index],id=occasion.id;viewedHistoryPhoto=photo;
+  showModal(()=>`<div class="history-stage" aria-label="Photo ${index+1} of ${photos.length}"><div class="history-full">${image(selected,photo)}</div>${index>0?`<button class="history-nav history-prev" data-action="history-previous" aria-label="Previous photo">${icon('left')}</button>`:''}${index<photos.length-1?`<button class="history-nav history-next" data-action="history-next" aria-label="Next photo">${icon('chevron')}</button>`:''}</div><div class="history-view-heading"><div class="history-details"><time datetime="${esc(occasion.date)}">${esc(historyDate(occasion.date))}</time>${occasion.note?`<p class="pre-wrap">${esc(occasion.note)}</p>`:''}</div><span class="history-count" aria-live="polite">${index+1} / ${photos.length}</span><button class="history-menu" data-action="history-options" data-id="${esc(id)}" data-photo="${esc(photo)}" aria-label="Photo and occasion options" aria-haspopup="dialog">${icon('more')}</button></div>`);
+  modal.classList.add('photo-viewer');modal.setAttribute('aria-label','Cooking photo viewer');
+  if(focusDirection)modal.querySelector(`[data-action="history-${focusDirection}"]`)?.focus();
+}
+function moveHistoryPhoto(direction){
+  if(!modal.open||!modal.classList.contains('photo-viewer')||!selected)return;
+  const photos=historyPhotos(selected),index=photos.findIndex(item=>item.id===viewedHistoryPhoto),next=photos[index+direction];
+  if(index>=0&&next)showHistoryPhoto(next.id,direction>0?'next':'previous');
+}
 async function handleAction(el){
   const action=el.dataset.action,id=el.dataset.id;
-  if(action==='history-view'){const photo=el.dataset.photo,occasion=selected.recipe.cookingHistory?.find(o=>o.id===id);if(!occasion)return;showModal(()=>`<h2>Cooking photo</h2><div class="history-full">${image(selected,photo)}</div><div class="history-view-heading"><div class="history-details"><time datetime="${esc(occasion.date)}">${esc(historyDate(occasion.date))}</time>${occasion.note?`<p class="pre-wrap">${esc(occasion.note)}</p>`:''}</div><button class="history-menu" data-action="history-options" data-id="${esc(id)}" data-photo="${esc(photo)}" aria-label="Photo and occasion options" aria-haspopup="dialog">${icon('more')}</button></div>`);return;}
+  if(action==='history-view'){showHistoryPhoto(el.dataset.photo);return;}
+  if(action==='history-previous'||action==='history-next'){moveHistoryPhoto(action==='history-next'?1:-1);return;}
   if(action==='history-options'){const photo=el.dataset.photo;showModal(()=>`<h2>Photo and occasion</h2><div class="button-stack">${button('Add photos to occasion','history-add',`data-id="${esc(id)}"`)}${button('Edit date or note','history-edit',`data-id="${esc(id)}"`)}${button('Remove this photo','history-remove-photo',`data-id="${esc(id)}" data-photo="${esc(photo)}"`)}${button('Delete occasion','history-delete',`data-id="${esc(id)}"`,'danger')}</div>`);return;}
   if(action==='history-add'){if(modal.open)modal.close();photoTarget={recipeId:selected.id,occasionId:id||null};document.querySelector('#history-file').click();return;}
   if(action==='history-cancel'){photoDraft=null;modal.close();return;}
@@ -511,7 +525,10 @@ async function handleAction(el){
 async function databaseRetry(){try{if(shopping)await saveShopping();if(!shoppingSaved)return;if(session)await write('sessions',session);if(pending)toast(tr('Storage available. Save the import when ready.'));library=await read('recipes');storageError='';sessionSaved=true;render();}catch(e){storageFailure(e);}}
 function enqueue(fn){actionQueue=actionQueue.then(fn).catch(e=>{if(e.name==='QuotaExceededError'||e.name==='UnknownError')storageFailure(e);else toast(e.message||tr('Something went wrong. Please try again.'));});}
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(el&&!el.disabled){if(el.dataset.action==='fullscreen'){toggleFullscreen();return;}if(['start','resume','sound','start-timer'].includes(el.dataset.action))activateAudio();enqueue(()=>handleAction(el));}});
-modal.addEventListener('close',()=>{photoDraft=null;});
+modal.addEventListener('close',()=>{photoDraft=null;viewedHistoryPhoto=null;modal.classList.remove('photo-viewer');modal.removeAttribute('aria-label');});
+modal.addEventListener('touchstart',e=>{if(modal.classList.contains('photo-viewer')&&e.target.closest('.history-stage')&&e.touches.length===1)historyTouchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+modal.addEventListener('touchend',e=>{if(!historyTouchStart||!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-historyTouchStart.x,dy=e.changedTouches[0].clientY-historyTouchStart.y;historyTouchStart=null;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.4)moveHistoryPhoto(dx<0?1:-1);},{passive:true});
+modal.addEventListener('touchcancel',()=>{historyTouchStart=null;});
 document.addEventListener('fullscreenchange',updateFullscreenButton);
 document.addEventListener('webkitfullscreenchange',updateFullscreenButton);
 document.addEventListener('change',e=>{
@@ -549,6 +566,7 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(!['ArrowLeft','ArrowRight'].includes(e.key)||e.defaultPrevented||e.repeat||e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
+  if(modal.open&&modal.classList.contains('photo-viewer')){e.preventDefault();moveHistoryPhoto(e.key==='ArrowLeft'?-1:1);return;}
   if(view!=='cooking'||!session||modal.open||e.target.closest('input,textarea,select,[role="textbox"]')||e.target.isContentEditable)return;
   e.preventDefault();
   enqueue(async()=>{if(view==='cooking'&&session&&!modal.open)await browseStep(e.key==='ArrowLeft'?-1:1);});
