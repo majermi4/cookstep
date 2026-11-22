@@ -101,3 +101,23 @@ test('shared collection still requires complete trusted identity on every data p
   const discovery=await request.post('/mcp',{data:{jsonrpc:'2.0',id:1,method:'tools/list'}});
   expect(discovery.status()).toBe(200);expect((await discovery.json()).result.tools.length).toBeGreaterThan(0);
 });
+
+test('recipe edits through MCP preserve shared cooking history and its photo',async({playwright,baseURL})=>{
+  const client=await playwright.request.newContext({baseURL,extraHTTPHeaders:identity('history-test-visitor')});
+  const id=crypto.randomUUID(),photoId=crypto.randomUUID(),occasionId=crypto.randomUUID();
+  const image={id:photoId,path:`images/history-${photoId}.png`,alt:'Cooking photo',kind:'photo',origin:'user_supplied'};
+  const recipe={...structuredClone(sample),id,title:'History preservation '+id,images:[image],cookingHistory:[{id:occasionId,date:'2024-05-14',note:'A shared meal',photoIds:[photoId]}]};
+  delete recipe.translations;const text=recipeText(recipe);recipe.translations={en:text,es:structuredClone(text),cs:structuredClone(text)};
+  let revision=crypto.randomUUID();
+  try{
+    const uploaded=await client.post('/api/library/assets',{headers:{'Content-Type':'image/png'},data:png});expect(uploaded.status()).toBe(200);const asset=await uploaded.json();
+    const saved=await client.put('/api/library/recipes/'+id,{data:{recipe,assets:{[photoId]:asset},expectedRevision:null,mutationId:revision}});expect(saved.status()).toBe(200);
+    const edited={...structuredClone(sample),id,title:'Edited recipe '+id};delete edited.translations;const overlay=recipeText(edited);edited.translations={en:overlay,es:structuredClone(overlay),cs:structuredClone(overlay)};
+    const next=crypto.randomUUID(),result=await rpc(client,'save_recipe',{recipe:edited,expectedRevision:revision,mutationId:next});expect(result.isError,JSON.stringify(result)).toBeUndefined();revision=next;
+    const loaded=await rpc(client,'get_recipe',{id});expect(loaded.structuredContent.recipe.cookingHistory).toEqual(recipe.cookingHistory);expect(loaded.structuredContent.assets[photoId].key).toBe(asset.key);
+    for(const locale of ['en','es','cs'])expect(loaded.structuredContent.recipe.translations[locale].images).toEqual([{id:photoId,alt:'Cooking photo'}]);
+    const restored=await client.get('/api/library/assets',{params:{key:asset.key}});expect(await restored.body()).toEqual(png);
+  }finally{
+    await client.delete('/api/library/recipes/'+id,{data:{expectedRevision:revision,mutationId:crypto.randomUUID()}});await client.dispose();
+  }
+});

@@ -89,7 +89,7 @@ export async function callRecipeTool(user:string,name:string,args:any) {
         if(!assets[image.id]&&previous)assets[image.id]=current.assets?.[image.id];
       }
     }
-    const result=await mutateCloudRecord(user,recipe?.id,{...args,assets,savedAt:Date.now()});
+    const result=await mutateCloudRecord(user,recipe?.id,{...args,recipe,assets,savedAt:Date.now()});
     return {id:recipe.id,...result,saved:true,message:'Saved to Cookstep. Open or sync your library to see it. Active cooking sessions keep their original recipe.'};
   }
   throw new CloudError('Unknown recipe tool.');
