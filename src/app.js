@@ -224,8 +224,8 @@ function historyDate(date) {
 }
 function historyPhotos(record) {return [...(record.recipe.cookingHistory||[])].sort((a,b)=>b.date.localeCompare(a.date)).flatMap(occasion=>occasion.photoIds.map(id=>({id,occasion})));}
 function historyGallery(record) {
-  const photos=historyPhotos(record).map(({id,occasion:o})=>`<button class="history-open" data-action="history-view" data-id="${esc(o.id)}" data-photo="${esc(id)}" aria-label="View cooking photo">${image(record,id)}</button>`).join('');
-  return `<section class="panel cooking-history"><div class="history-heading"><h2>Cooking photos</h2><button class="history-add" data-action="history-add" aria-label="Add cooking photos" title="Add cooking photos"><span aria-hidden="true">+</span></button></div>${photos?`<div class="history-photos">${photos}</div>`:'<p class="history-empty">Your moments around the table belong here.</p>'}</section>`;
+  const photos=historyPhotos(record).map(({id,occasion:o})=>ui`<button class="history-open" data-action="history-view" data-id="${esc(o.id)}" data-photo="${esc(id)}" aria-label="View cooking photo">${image(record,id)}</button>`).join('');
+  return ui`<section class="panel cooking-history"><div class="history-heading"><h2>Cooking photos</h2><button class="history-add" data-action="history-add" aria-label="Add cooking photos" title="Add cooking photos"><span aria-hidden="true">+</span></button></div>${photos?`<div class="history-photos">${photos}</div>`:ui`<p class="history-empty">Your moments around the table belong here.</p>`}</section>`;
 }
 async function saveHistory(record) {
   // Keep text overlays aligned with the image list, including removed photos.

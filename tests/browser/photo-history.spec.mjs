@@ -35,3 +35,21 @@ test('phone gallery combines occasions and keeps details and controls in the vie
   await page.locator('[data-action="history-options"]').click();await page.locator('[data-action="history-delete"]').click();await page.locator('[data-action="history-confirm-delete"]').click();await expect(page.locator('.history-open')).toHaveCount(1);
   expect(await page.evaluate(async()=>{const {read}=await import('/storage.js');return (await read('sync')).length;})).toBeGreaterThan(0);
 });
+
+test('the gallery title and controls follow the selected language',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/');
+  await page.locator('[data-action="example"]').click();await page.locator('[data-action="save-import"]').click();
+  const gallery=page.locator('.cooking-history');
+  for(const [locale,title,add,empty] of [
+    ['es','Fotos de cocina','Añadir fotos de cocina','Aquí van tus momentos alrededor de la mesa.'],
+    ['cs','Fotky z vaření','Přidat fotky z vaření','Sem patří tvoje chvíle u společného stolu.'],
+    ['en','Cooking photos','Add cooking photos','Your moments around the table belong here.']
+  ]){
+    await page.locator('.settings-trigger').click();
+    await page.locator('[data-locale]').selectOption(locale);
+    await page.locator('.modal-close').click();
+    await expect(gallery.getByRole('heading')).toHaveText(title);
+    await expect(gallery.getByRole('button',{name:add})).toHaveAttribute('title',add);
+    await expect(gallery.locator('.history-empty')).toHaveText(empty);
+  }
+});
